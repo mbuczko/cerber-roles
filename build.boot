@@ -18,6 +18,6 @@
 (task-options!
  pom {:project 'cerber/cerber-roles
       :version +version+
-      :description ""
+      :description "Roles and permissions made easy"
       :url "https://github.com/mbuczko/cerber-roles"
       :scm {:url "https://github.com/mbuczko/cerber-roles"}})

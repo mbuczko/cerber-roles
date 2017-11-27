@@ -1,6 +1,6 @@
 # Roles and permissions
 
-This is a simple library that handles user's roles and permissions, which is the missing piece of [Ceber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider).
+This is a simple library that handles user's roles and permissions, which is the missing piece of [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider).
 As OAuth2 specification does not describe directly how OAuth scopes translate to roles and permissions, this code has been separated from provider implementation and given as
 optional plugin-in that makes scopes and roles/permissions mix and matching a bit easier.
 
@@ -8,7 +8,7 @@ This solution conceptually bases on [thulmann/permissions](https://github.com/tu
 
 `(init-roles [roles-map])`
 
-Initializes roles-to-permissions mapping. Permissions can have a nested roles as well, initialization simplifies this notation by replacing roles with calculated permissions and
+Initializes roles-to-permissions mapping. As permissions can have a nested roles, initialization simplifies this notation by replacing roles with calculated permissions and
 returns same mapping with no nested rules inside.
 
 ``` clojure
@@ -27,7 +27,7 @@ returns same mapping with no nested rules inside.
 
 `(has-role [principal role])`
 
-Returns true if `role` matches any of principal's `:roles`. 
+Returns true if `role` matches any of principal's set of `:roles` 
 
 ``` clojure
 (has-role {:roles #{"user/read" "user/write"}} "user/write")
@@ -35,7 +35,7 @@ Returns true if `role` matches any of principal's `:roles`.
 
 `(has-permission [principal permission])`
 
-Returns true if `permission` matches any of principal's `:permissions`.
+Returns true if `permission` matches any of principal's set of `:permissions`.
 Permissions can be exact (eg. `user:write`) or wildcard ones (`user:*`).
 
 ``` clojure

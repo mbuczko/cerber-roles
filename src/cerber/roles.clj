@@ -105,7 +105,7 @@
         (contains-wildcard-permission? permissions))))
 
 (defn has-role [principal role]
-  (if-let [roles (:roles principal)]
+  (when-let [roles (:roles principal)]
     (contains? roles role)))
 
 (defn has-permission [principal perm-string]

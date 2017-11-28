@@ -7,7 +7,7 @@
   (= str "*"))
 
 (defn role-str? [str]
-  (.contains str "/"))
+  (and str (.contains str "/")))
 
 (defn make-permission [perm-string]
   (let [[domain actions entities] (.split perm-string ":")

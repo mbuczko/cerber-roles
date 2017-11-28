@@ -10,7 +10,7 @@ This solution conceptually bases on [thulmann/permissions](https://github.com/tu
 
 ## Anatomy of Permission
 
-A permission consists of three parts: a domain, an action and a set of entities, all joined with ':'. Example: `user:read:1234,5678`.
+A permission consists of three parts: a domain, an action and a set of entities, all joined with `:`. Example: `user:read:1234,5678`.
 
 A few interesting cases may appear here:
 
@@ -20,7 +20,7 @@ A few interesting cases may appear here:
 
 ## Anatomy of Role
 
-Similar to permission, role consists of 2 parts: domain and a name, both joined with '/'.
+Similar to permission, role consists of 2 parts: domain and a name, both joined with `/`.
 It is used to group multiple permissions together in a simple mapping, like following:
 
 ``` clojure

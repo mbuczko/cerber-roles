@@ -1,15 +1,49 @@
 # Roles and permissions
 
-This is a simple library that handles user's roles and permissions, which is the missing piece of [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider).
-As OAuth2 specification does not describe directly how OAuth scopes translate to roles and permissions, this code has been separated from provider implementation and given as
-optional plugin-in that makes scopes and roles/permissions mix and matching a bit easier.
+This simple library fills in the gap between OAuth2 scopes and role-based access control usually used to protect user resources.
 
-This solution conceptually bases on [thulmann/permissions](https://github.com/tuhlmann/permissions) and exposes a few functions as an API.
+As OAuth2 specification does not describe directly how OAuth scopes translate to roles and permissions, this code has been separated from
+[Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional plugin-in that makes
+scopes and roles/permissions mix and matching a bit easier.
+
+This solution conceptually bases on [thulmann/permissions](https://github.com/tuhlmann/permissions) and exposes very similar API.
+
+## Anatomy of Permission
+
+A permission consists of three parts: a domain, an action and a set of entities, all joined with ':'. Example: `user:read:1234,5678`.
+
+A few interesting cases may appear here:
+
+ - no particular entities mentioned: action is allowed on all entities. Example: `user:read`.
+ - wildcard action: any action within given domain is allowed. Example: `user:*`
+ - wildcard permission: any action on any domain is allowed. Example: `*`
+
+## Anatomy of Role
+
+Similar to permission, role consists of 2 parts: domain and a name, both joined with '/'.
+It is used to group multiple permissions together in a simple mapping, like following:
+
+``` clojure
+{"user/all"      #{"user:read", "user:write"}
+ "project/read"  #{"project:read"}}
+```
+
+Interesting thing here is that role may also map to wildcard actions and other roles, exact or wildcard ones:
+
+``` clojure
+{"user/edit     #{"user:read", "user:write"}
+ "project/all"  #{"project:*", "timeline:*"}
+ "admin/company #{"user/*", "project/*"}
+ "admin/all     "*"}
+```
+
+# API
 
 `(init-roles [roles-map])`
 
-Initializes roles-to-permissions mapping. As permissions can have a nested roles, initialization simplifies this notation by replacing roles with calculated permissions and
-returns same mapping with no nested rules inside.
+Initializes roles-to-permissions mapping.
+
+Initialized mapping has no longer nested roles (they get unrolled with corresponding permissions).
 
 ``` clojure
 (def roles (init-roles {"user/admin"    "user:*"

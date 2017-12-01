@@ -9,9 +9,9 @@
 (defn role-str? [str]
   (and str (.contains str "/")))
 
-(defn make-permission [perm-string]
-  (let [[domain actions entities] (.split perm-string ":")
-        wildcard? (wildcard-str? perm-string)
+(defn make-permission [perm-str]
+  (let [[domain actions entities] (.split perm-str ":")
+        wildcard? (wildcard-str? perm-str)
         sanitized (and actions (.trim actions))]
     (when (or wildcard? (seq sanitized))
       (map->Permission
@@ -86,34 +86,43 @@
   (some :wildcard-permission? permissions))
 
 (defn contains-wildcard-action?
-  [permissions permission]
-  (let [domain (:domain permission)]
+  [permissions p]
+  (let [domain (:domain p)]
     (some #(and (:wildcard-action? %1)
                 (= domain (:domain %1)))
           permissions)))
 
 (defn contains-exact-permission?
-  [permissions permission]
-  (contains? permissions permission))
+  [permissions p]
+  (contains? permissions p))
 
+(defn contains-matching-permission?
+  [permissions p]
+  (or (contains-exact-permission? permissions p)
+      (contains-wildcard-action? permissions p)
+      (contains-wildcard-permission? permissions)))
+
+(defn contains-matching-permission-in-roles?
+  [roles p mapping]
+  (boolean (loop [rset roles]
+             (when-let [r (first rset)]
+               (or (contains-matching-permission? (mapping r) p)
+                   (recur (rest rset)))))))
 ;; API
 
-(defn implied-by? [perm-string permissions]
-  (let [p (make-permission perm-string)]
-    (or (contains-exact-permission? permissions p)
-        (contains-wildcard-action? permissions p)
-        (contains-wildcard-permission? permissions))))
+(defn implied-by? [perm-str permissions]
+  (let [p (make-permission perm-str)]
+    (contains-matching-permission? permissions p)))
 
-(defn has-role [principal role]
+(defn has-permission [perm-str principal mapping]
+  (when-let [{:keys [roles permissions]} principal]
+    (let [p (make-permission perm-str)]
+      (or (contains-matching-permission? permissions p)
+          (contains-matching-permission-in-roles? roles p mapping)))))
+
+(defn has-role [role principal]
   (when-let [roles (:roles principal)]
     (contains? roles role)))
-
-(defn has-permission [principal perm-string]
-  (when-let [{:keys [roles permissions]} principal]
-    (let [p (make-permission perm-string)]
-      (or (contains-exact-permission? permissions p)
-          (contains-wildcard-action? permissions p)
-          (contains-wildcard-permission? permissions)))))
 
 (defn init-roles
   "Returns a mapping between roles and set of Permissions based on initial

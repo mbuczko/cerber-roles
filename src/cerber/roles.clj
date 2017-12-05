@@ -9,7 +9,10 @@
 (defn role-str? [str]
   (and str (.contains str "/")))
 
-(defn make-permission [perm-str]
+(defn make-permission
+  "Build a Permission based on its stringified form like 'user:write'."
+
+  [perm-str]
   (let [[domain actions entities] (.split perm-str ":")
         wildcard? (wildcard-str? perm-str)
         sanitized (and actions (.trim actions))]
@@ -20,6 +23,12 @@
         :actions  (or sanitized "*")
         :wildcard-permission? wildcard?
         :wildcard-action? (or wildcard? (wildcard-str? sanitized))}))))
+
+(defn strings->permissions
+  "Transforms collections of stringified permissions into set of Permissions."
+
+  [strings]
+  (into #{} (map make-permission strings)))
 
 (defn- merge-set [coll e]
   (let [c (or coll (hash-set))]
@@ -114,13 +123,13 @@
   (let [p (make-permission perm-str)]
     (contains-matching-permission? permissions p)))
 
-(defn has-permission [perm-str principal mapping]
+(defn has-permission? [perm-str principal mapping]
   (when-let [{:keys [roles permissions]} principal]
     (let [p (make-permission perm-str)]
       (or (contains-matching-permission? permissions p)
           (contains-matching-permission-in-roles? roles p mapping)))))
 
-(defn has-role [role principal]
+(defn has-role? [role principal]
   (when-let [roles (:roles principal)]
     (contains? roles role)))
 

@@ -1,5 +1,5 @@
 (ns cerber.roles-test
-  (:require [cerber.roles :refer [init-roles has-permission has-role implied-by? make-permission]]
+  (:require [cerber.roles :refer [init-roles has-permission? has-role? implied-by? make-permission]]
             [clojure.test :refer :all]))
 
 (def roles (init-roles {"user/admin"    "user:*"
@@ -83,17 +83,17 @@
     (is (implied-by? "user:read" (roles "project/edit")))))
 
 (deftest principal-permissions
-  (testing "principal with a role"
+  (testing "principal with a roles"
     (let [principal {:roles #{"user/read" "user/write"}}]
-      (is (has-role "user/read" principal))
-      (is (not (has-role "user/edit" principal)))))
+      (is (has-role? "user/read" principal))
+      (is (not (has-role? "user/edit" principal)))))
 
-  (testing "principal with a permission"
+  (testing "principal with a permissions"
     (let [principal {:roles #{"user/read" "timeline/edit"}
                      :permissions #{(make-permission "project:read")
                                     (make-permission "contacts:*")}}]
-      (is (has-permission "project:read"   principal roles))
-      (is (has-permission "timeline:read"  principal roles))
-      (is (has-permission "contacts:read"  principal roles))
-      (is (has-permission "contacts:write" principal roles))
-      (is (not (has-permission "project:write" principal roles))))))
+      (is (has-permission? "project:read"   principal roles))
+      (is (has-permission? "timeline:read"  principal roles))
+      (is (has-permission? "contacts:read"  principal roles))
+      (is (has-permission? "contacts:write" principal roles))
+      (is (not (has-permission? "project:write" principal roles))))))

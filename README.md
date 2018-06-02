@@ -1,3 +1,5 @@
+[![Clojars Project](https://img.shields.io/clojars/v/cerber/cerber-roles.svg)](https://clojars.org/cerber/cerber-roles)
+
 # Roles and permissions
 
 This simple library fills in the gap between OAuth2 scopes and role-based access control usually used to protect user resources.

@@ -1,6 +1,9 @@
 (ns cerber.roles-test
-  (:require [cerber.roles :refer [init-roles has-permission? has-role? implied-by? make-permission]]
+  (:require [cerber.roles :refer :all]
             [clojure.test :refer :all]))
+
+;; a mapping between roles and sets of permissions.
+;; `init-roles` replaces all the nested roles with corresponding permissions.
 
 (def roles (init-roles {"user/admin"    "user:*"
                         "user/all"      #{"user:read" "user:write"}
@@ -14,26 +17,30 @@
                         "project/all"   #{"contacts/read" "user/*" "project:read"}
                         "project/edit"  "company/*"}))
 
+;; client's scopes-to-roles mapping used by ring middleware
+
+(def scopes->roles {"public:read" #{"accounts/read" "company/read"}})
+
 
 (deftest create-permissions
   (testing "exact permission"
     (let [permission (make-permission "user:read")]
       (is (= (:domain permission) "user"))
-      (is (= (:actions permission) "read"))
+      (is (= (:action permission) "read"))
       (is (not (:wildcard-action? permission)))
       (is (not (:wildcard-permission? permission)))))
 
   (testing "wildcard action"
     (let [permission (make-permission "user:*")]
       (is (= (:domain permission) "user"))
-      (is (= (:actions permission) "*"))
+      (is (= (:action permission) "*"))
       (is (:wildcard-action? permission))
       (is (not (:wildcard-permission? permission)))))
 
   (testing "wildcard permission"
     (let [permission (make-permission "*")]
       (is (= (:domain permission) "*"))
-      (is (= (:actions permission) "*"))
+      (is (= (:action permission) "*"))
       (is (:wildcard-action? permission))
       (is (:wildcard-permission? permission))))
 
@@ -89,11 +96,32 @@
       (is (not (has-role? "user/edit" principal)))))
 
   (testing "principal with a permissions"
-    (let [principal {:roles #{"user/read" "timeline/edit"}
-                     :permissions #{(make-permission "project:read")
+    (let [principal {:permissions #{(make-permission "project:read")
                                     (make-permission "contacts:*")}}]
-      (is (has-permission? "project:read"   principal roles))
-      (is (has-permission? "timeline:read"  principal roles))
-      (is (has-permission? "contacts:read"  principal roles))
-      (is (has-permission? "contacts:write" principal roles))
-      (is (not (has-permission? "project:write" principal roles))))))
+      (is (has-permission? "project:read"   principal))
+      (is (has-permission? "contacts:read"  principal))
+      (is (has-permission? "contacts:write" principal))
+      (is (not (has-permission? "project:write" principal))))))
+
+(deftest principal-updated-with-middleware
+  (let [principal {:roles #{"accounts/read"}
+                   :permissions #{(make-permission "project:read")}}]
+
+    (testing "client provided, scope maps to roles exceeding principal's roles"
+      (let [updated (update-with-calculated-permissions
+                     principal {:scopes ["public:read"]} roles {"public:read" #{"accounts/read" "company/read"}})]
+        (is (= #{"accounts/read"} (:roles updated)))
+        (is (= #{(make-permission "user:read")} (:permissions updated)))))
+
+    (testing "client provided with empty scope"
+      (let [updated (update-with-calculated-permissions
+                     principal #{} roles scopes->roles)]
+        (is (= #{} (:roles updated)))
+        (is (= #{} (:permissions updated)))))
+
+    (testing "client not provided, permission already assigned to principal"
+      (let [updated (update-with-calculated-permissions
+                     principal nil roles scopes->roles)]
+        (is (= #{"accounts/read"} (:roles updated)))
+        (is (= #{(make-permission "user:read")
+                 (make-permission "project:read")} (:permissions updated)))))))

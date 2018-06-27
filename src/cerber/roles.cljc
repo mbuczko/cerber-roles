@@ -166,7 +166,7 @@
 
    ;; ring middleware
 
-#?(:clj (defn update-with-calculated-permissions
+#?(:clj (defn update-principals-roles-permissions
           "Updates principal's roles and permissions according to following rules:
 
   - if a client is given (which assumes client-originated request) roles are calculated
@@ -201,7 +201,7 @@
             (handler (let [client (:cerber.oauth2.context/client req)]
                        (update req
                                :cerber.oauth2.context/user
-                               update-with-calculated-permissions
+                               update-principals-roles-permissions
                                client
                                roles-mapping
                                transitions))))))

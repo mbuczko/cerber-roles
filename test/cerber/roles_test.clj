@@ -107,20 +107,20 @@
   (let [principal {:roles #{"accounts/read"}
                    :permissions #{(make-permission "project:read")}}]
 
-    (testing "client provided, scope maps to roles exceeding principal's roles"
-      (let [updated (update-with-calculated-permissions
+    (testing "client provided, scopes map to roles exceeding principal's original roles"
+      (let [updated (update-principals-roles-permissions
                      principal {:scopes ["public:read"]} roles {"public:read" #{"accounts/read" "company/read"}})]
         (is (= #{"accounts/read"} (:roles updated)))
         (is (= #{(make-permission "user:read")} (:permissions updated)))))
 
-    (testing "client provided with empty scope"
-      (let [updated (update-with-calculated-permissions
+    (testing "client provided with empty scopes"
+      (let [updated (update-principals-roles-permissions
                      principal #{} roles scopes->roles)]
         (is (= #{} (:roles updated)))
         (is (= #{} (:permissions updated)))))
 
-    (testing "client not provided, permission already assigned to principal"
-      (let [updated (update-with-calculated-permissions
+    (testing "client not provided, some permission already assigned to principal"
+      (let [updated (update-principals-roles-permissions
                      principal nil roles scopes->roles)]
         (is (= #{"accounts/read"} (:roles updated)))
         (is (= #{(make-permission "user:read")

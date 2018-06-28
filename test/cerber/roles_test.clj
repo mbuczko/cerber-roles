@@ -1,5 +1,6 @@
 (ns cerber.roles-test
-  (:require [cerber.roles :refer :all]
+  (:require [cerber.impl.roles :refer [make-permission update-principals-roles-permissions]]
+            [cerber.roles :refer :all]
             [clojure.test :refer :all]))
 
 ;; a mapping between roles and sets of permissions.

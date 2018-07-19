@@ -52,7 +52,7 @@
 #?(:clj (defn wrap-permissions
           "Sets up user's permissions and roles."
 
-          [handler roles-mapping transitions]
+          [handler roles-mapping scopes->roles]
           (fn [req]
             (handler (let [client (:cerber.oauth2.context/client req)]
                        (update req
@@ -60,4 +60,4 @@
                                update-principals-roles-permissions
                                client
                                roles-mapping
-                               transitions))))))
+                               scopes->roles))))))

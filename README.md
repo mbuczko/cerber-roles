@@ -8,11 +8,9 @@ As OAuth2 specification does not describe directly how OAuth scopes translate to
 [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional plugin-in that makes
 scopes and roles/permissions mix and matching a bit easier.
 
-This solution conceptually bases on [thulmann/permissions](https://github.com/tuhlmann/permissions) and exposes very similar API.
-
 ## Anatomy of Permission
 
-A permission consists of three parts: a domain, an action and a set of entities, all joined with `:`. Example: `user:read:1234,5678`.
+A permission consists of two parts: a domain and action, both joined with `:`. Example: `user:read`.
 
 A few interesting cases may appear here:
 
@@ -30,7 +28,7 @@ It is used to group multiple permissions together in a simple mapping, like foll
  "project/read"  #{"project:read"}}
 ```
 
-Interesting thing here is that role may also map to wildcard actions and other roles, exact or wildcard ones:
+Role may map to wildcard actions and other roles too (exact or wildcards):
 
 ``` clojure
 {"user/edit     #{"user:read", "user:write"}
@@ -61,7 +59,7 @@ Initialized mapping has no longer nested roles (they get unrolled with correspon
                         "project/edit"  "company/*"}))
 ```
 
-`(has-role [principal role])`
+`(has-role? [role principal])`
 
 Returns true if `role` matches any of principal's set of `:roles` 
 
@@ -69,14 +67,16 @@ Returns true if `role` matches any of principal's set of `:roles`
 (has-role {:roles #{"user/read" "user/write"}} "user/write")
 ```
 
-`(has-permission [principal permission])`
+`(has-permission [permission principal])`
 
 Returns true if `permission` matches any of principal's set of `:permissions`.
-Permissions can be exact (eg. `user:write`) or wildcard ones (`user:*`).
+Permissions can be exact (eg. `user:write`) or wildcard one (`user:*`).
 
 ``` clojure
-(has-permission {:permissions #{(make-permission "project:read")
-                                (make-permission "contacts:*")}}
-                "contacts:write")
+(def user {:permissions #{(make-permission "project:read")
+                          (make-permission "contacts:*")}}
+
+(has-permission user "contacts:write"))
 ```
+
 

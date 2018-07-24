@@ -4,18 +4,17 @@
    #?(:clj [cerber.oauth2.context])))
 
 (defn strings->permissions
-  "Transforms collections of stringified permissions into set of `Permission`s."
+  "Decomposes collections of colon-separated strings into set of `Permission`s."
 
   [strings]
   (into #{} (map make-permission strings)))
 
 (defn permissions->strings
-  "Transform collections of `Permission`s into their stringified versions."
+  "Serializes set of `Permission`s into colon-separated strings."
 
   [permissions]
-  (map #(let [{:keys [domain action entities]} %]
-          (-> (str domain ":" action)
-              (cond-> entities (str ":" entities))))
+  (map #(let [{:keys [domain action]} %]
+          (str domain ":" action))
        permissions))
 
 (defn implied-by? [permission permissions]

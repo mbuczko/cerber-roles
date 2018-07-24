@@ -6,9 +6,9 @@
 ;; a mapping between roles and sets of permissions.
 ;; `init-roles` replaces all the nested roles with corresponding permissions.
 
-(def roles (init-roles {"user/admin"    "user:*"
+(def roles (init-roles {"admin/all"     "*"
+                        "user/admin"    "user:*"
                         "user/all"      #{"user:read" "user:write"}
-                        "admin/all"     "*"
                         "accounts/read" #{"user:read"}
                         "company/read"  #{"company:read"}
                         "company/super" #{"company:read" "company:write" "company:edit" "company:delete"}
@@ -26,29 +26,32 @@
 (deftest create-permissions
   (testing "exact permission"
     (let [permission (make-permission "user:read")]
-      (is (= (:domain permission) "user"))
-      (is (= (:action permission) "read"))
-      (is (not (:wildcard-action? permission)))
-      (is (not (:wildcard-permission? permission)))))
+      (is (= "user" (:domain permission)))
+      (is (= "read" (:action permission)))
+      (is (not (:wildcard? permission)))))
 
   (testing "wildcard action"
     (let [permission (make-permission "user:*")]
-      (is (= (:domain permission) "user"))
-      (is (= (:action permission) "*"))
-      (is (:wildcard-action? permission))
-      (is (not (:wildcard-permission? permission)))))
+      (is (= "user" (:domain permission)))
+      (is (= "*" (:action permission)))
+      (is (not (:wildcard? permission)))))
 
   (testing "wildcard permission"
     (let [permission (make-permission "*")]
-      (is (= (:domain permission) "*"))
-      (is (= (:action permission) "*"))
-      (is (:wildcard-action? permission))
-      (is (:wildcard-permission? permission))))
+      (is (= "*" (:domain permission)))
+      (is (= "*" (:action permission)))
+      (is (:wildcard? permission))))
 
-  (testing "invalid actions"
+  (testing "invalid permissions"
+    (is (nil? (make-permission nil)))
+    (is (nil? (make-permission "")))
     (is (nil? (make-permission "user")))
     (is (nil? (make-permission "user:")))
-    (is (nil? (make-permission "user: ")))))
+    (is (nil? (make-permission "user::")))
+    (is (nil? (make-permission "user: ")))
+    (is (nil? (make-permission ":")))
+    (is (nil? (make-permission ":read")))
+    (is (nil? (make-permission "  :write")))))
 
 (deftest no-nested-roles
   (testing "role contains exact permission"

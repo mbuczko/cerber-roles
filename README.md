@@ -63,20 +63,18 @@ Initialized mapping has no longer nested roles (they get unrolled with correspon
 
 Returns true if `role` matches any of principal's set of `:roles` 
 
-``` clojure
-(has-role {:roles #{"user/read" "user/write"}} "user/write")
-```
-
 `(has-permission [permission principal])`
 
 Returns true if `permission` matches any of principal's set of `:permissions`.
-Permissions can be exact (eg. `user:write`) or wildcard one (`user:*`).
+Permissions can be exact, eg. `user:write` or wildcard ones like `user:*`.
 
 ``` clojure
-(def user {:permissions #{(make-permission "project:read")
+(def user {:roles #{"user/read" "user/write"}
+           :permissions #{(make-permission "project:read")
                           (make-permission "contacts:*")}}
 
 (has-permission user "contacts:write"))
+(has-role user "user/write")
 ```
 
 

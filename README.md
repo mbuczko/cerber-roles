@@ -35,7 +35,7 @@ Role may map to wildcard actions and other roles too (exact or wildcards):
 
 # Usage
 
-Having both permissions and roles already defined how to reach them in a request? This library exposes a `wrap-permissions` middleware which together with [cerber's](https://github.com/mbuczko/cerber-oauth2-provider) `cerber.handlers/wrap-authorized` populates principal's roles and permissions. 
+Having both permissions and roles already defined how to reach them in a request? A `wrap-permissions` middleware has been exposed which together with [cerber's](https://github.com/mbuczko/cerber-oauth2-provider) `cerber.handlers/wrap-authorized` populates principal's roles and permissions in ring-based HTTP request. 
 
 Let's walk through all the routes configuration basing on popular compojure to see how it works.
 

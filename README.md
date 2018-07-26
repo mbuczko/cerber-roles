@@ -92,7 +92,7 @@ The crucial step is to apply cerber's middlewares:
    api-defaults))
    ```
 
-Finally, let's initialize all the routes with defined _roles_ and _scopes-to-roles_ mapping, assuming that OAuth2 client may have any of `resources:read`, `resources:write` or `resource:manage` scopes assigned:
+Finally, let's combine all the routes with _roles_ and _scopes-to-roles_ mapping, assuming that OAuth2 client may have any of `resources:read`, `resources:write` or `resource:manage` scopes assigned:
 
 ```clojure
 (def roles (cerber.roles/init-roles
@@ -121,9 +121,11 @@ Looking at example above it's clear that entire mechanism comes down to 3 elemen
 The only unknown is how middleware populates roles and permissions bearing in mind that two scenarios may happen:
 
 1. Request is a web application originated, eg. user logged in and tries to view its own profile page
+   
    In this scenario, user populated into OAuth2 context by cerber's `wrap-authorized` middleware keeps its own roles (assigned at creation time) and gets all the permissions calculated upon these roles.
 
 2. Request comes from an OAuth2 client.
+   
    In this scenario OAuth2 client requests on behalf of user with approved set of scopes. Scopes are translated into roles (based on _scopes->roles_ mapping) and intersected with user's own roles.
    This is to avoid a situation where client's scopes translate into roles exceeding user's own roles. Calculated permissions are also intersected with user's permissions to avoid potential elevation.
 

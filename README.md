@@ -12,7 +12,6 @@ A permission consists of two parts: a _domain_ and _action_, both joined with co
 
 A few interesting cases may appear here:
 
- - no particular entities mentioned: action is allowed on all entities. Example: `user:read`.
  - wildcard action: any action within given domain is allowed. Example: `user:*`
  - wildcard permission: any action on any domain is allowed. Example: `*`
 

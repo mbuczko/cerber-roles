@@ -97,10 +97,7 @@ Finally, let's combine all the routes with _roles_ and _scopes-to-roles_ mapping
                     "resources:manage" #{"user/admin"}})
 
 (def app-routes
-  (routes
-    (api-routes roles scopes->roles)
-    oauth2-routes
-    public-routes))
+  (routes (api-routes roles scopes->roles) oauth2-routes))
 ```
 # How it works?
 

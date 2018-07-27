@@ -140,16 +140,17 @@
   roles and permissions, otherwise use own principal's roles to calculate final permissions."
 
           [principal client roles-mapping transitions]
-          (let [roles (:roles principal)
-                perms (into (roles->permissions roles roles-mapping)
-                            (:permissions principal))]
+          (when principal
+            (let [roles (:roles principal)
+                  perms (into (roles->permissions roles roles-mapping)
+                              (:permissions principal))]
 
-            (if client
-              (let [client-roles (set (mapcat transitions (:scopes client)))
-                    client-perms (roles->permissions client-roles roles-mapping)]
+              (if client
+                (let [client-roles (set (mapcat transitions (:scopes client)))
+                      client-perms (roles->permissions client-roles roles-mapping)]
 
-                (assoc principal
-                       :roles (intersection roles client-roles)
-                       :permissions (intersection perms client-perms)))
+                  (assoc principal
+                         :roles (intersection roles client-roles)
+                         :permissions (intersection perms client-perms)))
 
-              (assoc principal :permissions perms)))))
+                (assoc principal :permissions perms))))))

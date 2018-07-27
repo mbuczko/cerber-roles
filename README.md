@@ -35,7 +35,9 @@ Role may map to wildcard actions and other roles too (exact or wildcards):
 
 # Usage
 
-Having both permissions and roles already defined how to reach them in a request? A `wrap-permissions` middleware has been exposed which together with [cerber's](https://github.com/mbuczko/cerber-oauth2-provider) `cerber.handlers/wrap-authorized` populates principal's roles and permissions in ring-based HTTP request. 
+Ok, so permissions and roles are already defined. Now, how to make them showing up in a request? 
+
+A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` (described [here](https://github.com/mbuczko/cerber-oauth2-provider)) and populates roles and permissions within authorized principal.
 
 Let's walk through all the routes configuration basing on popular compojure to see how it works.
 
@@ -51,16 +53,6 @@ Cerber's routes go first:
   (POST "/token"     [] cerber.handlers/token-handler)
   (GET  "/login"     [] cerber.handlers/login-form-handler)
   (POST "/login"     [] cerber.handlers/login-submit-handler))
-```
-
-Sample public routes next:
-
-```clojure
-(require '[selmer.parser :as selmer])
-
-(defroutes public-routes
-  (GET  "/status" [] "ok")
-  (GET  "/" [] (selmer/render-file "templates/index.html" {})))
 ```
 
 Routes where we would like to have roles and permissions populated:
@@ -120,7 +112,7 @@ Looking at example above it's clear that entire mechanism comes down to 3 elemen
 
 The only unknown is how middleware populates roles and permissions bearing in mind that two scenarios may happen:
 
-1. Request is a web application originated, eg. user logged in and tries to view its own profile page
+1. Request is a web application originated, eg. user logged in and tries to view its own profile page.
    
    In this scenario, user populated into OAuth2 context by cerber's `wrap-authorized` middleware keeps its own roles (assigned at creation time) and gets all the permissions calculated upon these roles.
 

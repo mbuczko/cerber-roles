@@ -6,32 +6,38 @@
 
 (defn wildcard-str?
   [str]
-  (= str "*"))
+  (= "*" str))
 
 (defn role-str?
   [str]
   (and str (.contains str "/")))
 
 (defn sanitize-str
+  "Sanitizes input string trimming white characters on both sides.
+  Revokes empty strings and ones starting with colon character."
+
   [str]
   (when-let [sanitized (and str (.trim str))]
-    (when (and (> (.length sanitized) 0) (not (.startsWith sanitized ":")))
+    (when (and (> (.length sanitized) 0)
+               (not (.startsWith sanitized ":")))
       sanitized)))
 
 (defn make-permission
-  "Builds a `Permission` based on colon-separated string, like \"user:write\"."
+  "Builds a `Permission` based on colon-separated string, like \"user:write\".
+
+  Permission may be exact one, may have wildcard-action or have both domain
+  and action wildcarded. In this case a `wildcard?` is set to true and both
+  fields contain a wildcard symbol \"*\" as a value."
 
   [p]
-  (let [[domain action] (when p (.split p ":" 2))
-        wildcard? (wildcard-str? p)
-        sanitized-domain (or (sanitize-str domain) (when wildcard? "*"))
-        sanitized-action (or (sanitize-str action) (when wildcard? "*"))]
-
-    (when (or wildcard? (and sanitized-domain sanitized-action))
+  (let [[domain action] (when p (mapv sanitize-str (.split p ":" 2)))
+        wildcard? (or (wildcard-str? p)
+                      (= action domain "*"))]
+    (when (or wildcard? (and domain action (not (wildcard-str? domain))))
       (map->Permission
        {:wildcard? wildcard?
-        :domain sanitized-domain
-        :action sanitized-action}))))
+        :domain (if wildcard? "*" domain)
+        :action (if wildcard? "*" action)}))))
 
 (defn merge-set
   [coll e]
@@ -49,7 +55,7 @@
 
 (defn roles-reducer
   "Updates a map of :permissions and :dependencies, where first holds a mapping of
-  role-to-permissions, latter one acts as roles dependency graph (as roles can be nested)."
+  role-to-permissions, later one acts as roles dependency graph (as roles can be nested)."
 
   [reduced role s]
   (if (string? s)

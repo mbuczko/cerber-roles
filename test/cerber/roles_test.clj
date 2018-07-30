@@ -36,8 +36,14 @@
       (is (= "*" (:action permission)))
       (is (not (:wildcard? permission)))))
 
-  (testing "wildcard permission"
+  (testing "wildcard permission in simple form"
     (let [permission (make-permission "*")]
+      (is (= "*" (:domain permission)))
+      (is (= "*" (:action permission)))
+      (is (:wildcard? permission))))
+
+  (testing "wildcard permission in full form"
+    (let [permission (make-permission "*:*")]
       (is (= "*" (:domain permission)))
       (is (= "*" (:action permission)))
       (is (:wildcard? permission))))
@@ -45,12 +51,16 @@
   (testing "invalid permissions"
     (is (nil? (make-permission nil)))
     (is (nil? (make-permission "")))
+    (is (nil? (make-permission " ")))
+    (is (nil? (make-permission "*:*:")))
+    (is (nil? (make-permission "*:*:*")))
     (is (nil? (make-permission "user")))
     (is (nil? (make-permission "user:")))
     (is (nil? (make-permission "user::")))
     (is (nil? (make-permission "user: ")))
     (is (nil? (make-permission ":")))
     (is (nil? (make-permission ":read")))
+    (is (nil? (make-permission "*:read")))
     (is (nil? (make-permission "  :write")))))
 
 (deftest no-nested-roles

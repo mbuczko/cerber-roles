@@ -2,46 +2,47 @@
 
 # Roles and permissions
 
-This simple library fills in the gap between OAuth2 scopes and role-based access control usually used to protect user resources.
+This simple library fills in the gap between OAuth2 scopes and role-based access control, as OAuth2 specification does not explain directly how OAuth scopes translate into roles and permissions.
 
-As OAuth2 specification does not describe directly how OAuth scopes translate to roles and permissions, this code has been separated from [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional plugin-in that makes scopes and roles/permissions mix and matching a bit easier.
+This code has been separated from [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional library which hopefully makes scopes and roles/permissions match a bit more natural.
 
 ## Anatomy of Permission
 
-A permission consists of two parts: a _domain_ and _action_, both joined with colon, like `user:read`.
+A permission model implemented by this library consists of two parts: a _domain_ and _action_, both joined with colon, like `user:read`.
 
-A few interesting cases may appear here:
+This imposes two additional cases:
 
- - wildcard action: any action within given domain is allowed. Example: `user:*`
- - wildcard permission: any action on any domain is allowed. Example: `*`
+ - wildcard action: any action within given domain is allowed, eg: `user:*`
+ - wildcard permission: any action on any domain is allowed: `*:*`, or simply `*`
+
+For sake of clarity, no action on wildcard domain is permitted, so `*:write` is not a valid permission.
 
 ## Anatomy of Role
 
-Similar to permission, role consists of two parts: _domain_ and a _name_, combined together with slash. Role is used to group multiple permissions, like following:
+Similar to permission, role consists of two parts: _domain_ and a _name_, combined together with slash. Roles group multiple permissions in a mapping, like this:
 
 ``` clojure
-{"user/all"      #{"user:read", "user:write"}
- "project/read"  #{"project:read"}}
+"user/all"      #{"user:read", "user:write"}
+"project/read"  #{"project:read"}
 ```
 
-Role may map to wildcard actions and other roles too (exact or wildcards):
+Roles may also map to wildcard actions and explicit or wildcard roles:
 
 ``` clojure
-{"user/edit     #{"user:read", "user:write"}
- "project/all"  #{"project:*", "timeline:*"}
- "admin/company #{"user/*", "project/*"}
- "admin/all     "*"}
+"admin/all     "*"                          ;; mapping to wildcard permission
+"project/all"  #{"project:*", "timeline:*"} ;; mapping to wildcard-action permissions
+"admin/company #{"user/*", "project/*"}     ;; mapping to other roles
 ```
 
 # Usage
 
-Ok, so permissions and roles are already defined. Now, how to make them showing up in a request? 
+Once permissions and roles are already defined and bound together with carefully crafted mapping, how to make them showing up in a request? 
 
-A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` (described [here](https://github.com/mbuczko/cerber-oauth2-provider)) and populates roles and permissions within authorized principal.
+A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` (described [here](https://github.com/mbuczko/cerber-oauth2-provider)) and populates roles and permissions of authorized principal.
 
-Let's walk through all the routes configuration basing on popular compojure to see how it works.
+Let's walk through routes configuration based on popular [Compojure](https://github.com/weavejester/compojure) to see how it works.
 
-Cerber's routes go first:
+Cerber's OAuth2 routes go first:
 
 ```clojure
 (require '[cerber.handlers])
@@ -55,7 +56,7 @@ Cerber's routes go first:
   (POST "/login"     [] cerber.handlers/login-submit-handler))
 ```
 
-Routes where we would like to have roles and permissions populated:
+Routes that should have roles and permission populated go next:
 
 ```clojure
 (require '[cerber.oauth2.context :as ctx])
@@ -67,7 +68,7 @@ Routes where we would like to have roles and permissions populated:
                                 :user   (::ctx/user req)}})))
 ```
 
-The crucial step is to apply cerber's middlewares:
+Now, the crucial step is to attach both cerber's middlewares:
 
 ```clojure
 (require '[cerber.roles]
@@ -84,12 +85,17 @@ The crucial step is to apply cerber's middlewares:
    api-defaults))
    ```
 
-Finally, let's combine all the routes with _roles_ and _scopes-to-roles_ mapping, assuming that OAuth2 client may have any of `resources:read`, `resources:write` or `resource:manage` scopes assigned:
+Last step is to initialize routes with _roles_ and _scopes-to-roles_ mapping, here assuming that OAuth2 client may have any of `resources:read`, `resources:write` or `resource:manage` scopes assigned:
 
 ```clojure
 (def roles (cerber.roles/init-roles
-             {"user/admin"   #{"photos:*" "comments:*"}
+             {;; admin can do everything with photos and comments
+              "user/admin"   #{"photos:*" "comments:*"}
+              
+              ;; user can read and write to photos and comments
               "user/all"     #{"photos:read" "photos:write" "comments:read" "comments:write"}
+              
+              ;; limited user can only read photos and comments
               "user/limited" #{"photos:read" "comments:read"}}))
 
 (def scopes->roles {"resources:read"   #{"user/limited"}
@@ -103,20 +109,20 @@ Finally, let's combine all the routes with _roles_ and _scopes-to-roles_ mapping
 
 Looking at example above it's clear that entire mechanism comes down to 3 elements:
 
-* _roles_, which for performance reasons get unrolled by `init-roles` to contain no nested entries
-* _scopes->roles_ transition map which says how to translate an OAuth2 client's scope into a set of roles
-* a middleware which takes _roles_ and _scopes->roles_ and populates permissions in a request
+* _roles_, for performance reasons unrolled by `init-roles` to contain no nested entries.
+* _scopes->roles_ map which says how to translate an OAuth2 client's scope into a set of roles.
+* a middleware which takes _roles_ and _scopes->roles_ and calculates roles/permissions.
 
-The only unknown is how middleware populates roles and permissions bearing in mind that two scenarios may happen:
+One unknown is how middleware populates roles and permissions bearing in mind that two scenarios may happen:
 
-1. Request is a web application originated, eg. user logged in and tries to view its own profile page.
+1. Request is a user-originated, eg. user logged in and tries to view its own profile page.
    
-   In this scenario, user populated into OAuth2 context by cerber's `wrap-authorized` middleware keeps its own roles (assigned at creation time) and gets all the permissions calculated upon these roles.
+   In this scenario, user initialized and stored in context by cerber's `wrap-authorized` middleware keeps its own roles and calculated permissions.
 
 2. Request comes from an OAuth2 client.
    
    In this scenario OAuth2 client requests on behalf of user with approved set of scopes. Scopes are translated into roles (based on _scopes->roles_ mapping) and intersected with user's own roles.
-   This is to avoid a situation where client's scopes translate into roles exceeding user's own roles. Calculated permissions are also intersected with user's permissions to avoid potential elevation.
+   This is to avoid a situation where client's scopes may translate into roles exceeding user's own roles. Calculated permissions are also intersected with user's permissions to avoid potential elevation of priviledges.
 
 # API
 
@@ -133,7 +139,7 @@ Returns true if `role` matches any of principal's set of `:roles`
 `(has-permission [permission principal])`
 
 Returns true if `permission` matches any of principal's set of `:permissions`.
-Permissions can be exact, eg. `user:write` or wildcard ones like `user:*`.
+Permission can be exact, eg. `user:write` or wildcard one, like `user:*`.
 
 ``` clojure
 (def user {:roles #{"user/read" "user/write"}

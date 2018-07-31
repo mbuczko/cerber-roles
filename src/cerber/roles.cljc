@@ -1,16 +1,19 @@
 (ns cerber.roles
+  "An API with all the functions for roles- and permissions creation and assertion."
+
   (:require
    [cerber.impl.roles :refer :all]
    #?(:clj [cerber.oauth2.context])))
 
 (defn strings->permissions
-  "Decomposes collections of colon-separated strings into set of `Permission`s."
+  "Decomposes collections of colon-separated permission strings
+  into set of `Permission`s."
 
   [strings]
   (into #{} (map make-permission strings)))
 
 (defn permissions->strings
-  "Serializes set of `Permission`s into colon-separated strings."
+  "Serializes set of `Permission`s into colon-separated permission strings."
 
   [permissions]
   (map #(let [{:keys [domain action]} %]
@@ -22,20 +25,22 @@
     (contains-matching-permission? permissions p)))
 
 (defn has-role?
-  "Returns true if principal has given role assigned.
-  Returns false otherwise."
+  "Returns true if principal has given role assigned, returns false otherwise.
 
-  [role principal]
+  Role is a slash-separated pair \"domain/name\"."
+
+  [principal role]
   (let [roles (:roles principal)]
     (and roles (contains? roles role))))
 
 (defn has-permission?
-  "Returns true if principal has given permission assigned.
-  Returns false otherwise."
+  "Returns true if principal holds given permission, returns false otherwise.
 
-  [p principal]
+  Permission is a colon-separated pair \"domain:action\"."
+
+  [principal permission]
   (let [{:keys [permissions]} principal]
-    (and p permissions (implied-by? p permissions))))
+    (and permission permissions (implied-by? permission permissions))))
 
 #?(:clj (defn init-roles
           "Returns a mapping between roles and set of permissions. Nested roles,

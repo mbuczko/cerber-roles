@@ -106,16 +106,16 @@
 (deftest principal-permissions
   (testing "principal with a roles"
     (let [principal {:roles #{"user/read" "user/write"}}]
-      (is (has-role? "user/read" principal))
-      (is (not (has-role? "user/edit" principal)))))
+      (is (has-role? principal "user/read"))
+      (is (not (has-role? principal "user/edit")))))
 
   (testing "principal with a permissions"
     (let [principal {:permissions #{(make-permission "project:read")
                                     (make-permission "contacts:*")}}]
-      (is (has-permission? "project:read"   principal))
-      (is (has-permission? "contacts:read"  principal))
-      (is (has-permission? "contacts:write" principal))
-      (is (not (has-permission? "project:write" principal))))))
+      (is (has-permission? principal "project:read"))
+      (is (has-permission? principal "contacts:read"))
+      (is (has-permission? principal "contacts:write"))
+      (is (not (has-permission? principal "project:write"))))))
 
 (deftest principal-updated-with-middleware
   (let [principal {:roles #{"accounts/read"}

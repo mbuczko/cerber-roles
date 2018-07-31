@@ -1,4 +1,7 @@
 (ns cerber.impl.roles
+  "Implementation of roles- and permissions API functions.
+  These functions may be changed/reimplemented in a future releases."
+
   (:require [clojure.set :refer [union intersection]]
             [clojure.string :as str]))
 

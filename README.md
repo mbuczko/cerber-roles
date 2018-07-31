@@ -2,9 +2,9 @@
 
 # Roles and permissions
 
-This simple library fills in the gap between OAuth2 scopes and role-based access control, as OAuth2 specification does not explain directly how OAuth scopes translate into roles and permissions.
+This simple library tries to fill in the gap between OAuth2 authorization and role-based access control.
 
-This code has been separated from [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional library which hopefully makes scopes and roles/permissions match a bit more natural.
+Code has been separated from [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional add-on which hopefully makes scopes and roles easier to match.
 
 ## Anatomy of Permission
 
@@ -26,19 +26,19 @@ Similar to permission, role consists of two parts: _domain_ and a _name_, combin
 "project/read"  #{"project:read"}
 ```
 
-Roles may also map to wildcard actions and explicit or wildcard roles:
+Roles may also map to wildcard actions and explicit- or wildcard-roles:
 
 ``` clojure
-"admin/all     "*"                          ;; mapping to wildcard permission
-"project/all"  #{"project:*", "timeline:*"} ;; mapping to wildcard-action permissions
-"admin/company #{"user/*", "project/*"}     ;; mapping to other roles
+"admin/all"     "*"                          ;; maps to wildcard permission
+"project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
+"admin/company" #{"user/*", "project/*"}     ;; maps to all roles from user- and project-domains
 ```
 
 # Usage
 
-Once permissions and roles are already defined and bound together with carefully crafted mapping, how to make them showing up in a request? 
+Once permissions and roles are defined and bound together with carefully crafted mapping, how to make them showing up in a request? 
 
-A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` (described [here](https://github.com/mbuczko/cerber-oauth2-provider)) and populates roles and permissions of authorized principal.
+A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` exposed by [Cerber API](https://github.com/mbuczko/cerber-oauth2-provider) and populates authorized principal's roles and permissions.
 
 Let's walk through routes configuration based on popular [Compojure](https://github.com/weavejester/compojure) to see how it works.
 
@@ -68,7 +68,7 @@ Routes that should have roles and permission populated go next:
                                 :user   (::ctx/user req)}})))
 ```
 
-Now, the crucial step is to attach both cerber's middlewares:
+Now, the crucial step is to apply both `wrap-authorized` and `wrap-permissions` middlewares:
 
 ```clojure
 (require '[cerber.roles]
@@ -107,19 +107,19 @@ Last step is to initialize routes with _roles_ and _scopes-to-roles_ mapping, he
 ```
 # How it works?
 
-Looking at example above it's clear that entire mechanism comes down to 3 elements:
+Looking at example above it's clear that entire mechanism boils down to 3 elements:
 
 * _roles_, for performance reasons unrolled by `init-roles` to contain no nested entries.
 * _scopes->roles_ map which says how to translate an OAuth2 client's scope into a set of roles.
-* a middleware which takes _roles_ and _scopes->roles_ and calculates roles/permissions.
+* a middleware which takes _roles_ and _scopes->roles_ and calculates corresponding roles/permissions.
 
 One unknown is how middleware populates roles and permissions bearing in mind that two scenarios may happen:
 
-1. Request is a user-originated, eg. user logged in and tries to view its own profile page.
+1. Request is a cookie-based user-originated one.
    
-   In this scenario, user initialized and stored in context by cerber's `wrap-authorized` middleware keeps its own roles and calculated permissions.
+   In this scenario, principal initialized and stored in context by cerber's `wrap-authorized` middleware keeps its own roles and permissions calculated upon the roles.
 
-2. Request comes from an OAuth2 client.
+2. Request is a token-based client-originated one.
    
    In this scenario OAuth2 client requests on behalf of user with approved set of scopes. Scopes are translated into roles (based on _scopes->roles_ mapping) and intersected with user's own roles.
    This is to avoid a situation where client's scopes may translate into roles exceeding user's own roles. Calculated permissions are also intersected with user's permissions to avoid potential elevation of priviledges.
@@ -132,11 +132,11 @@ Initializes roles-to-permissions mapping.
 
 Initialized mapping has no longer nested roles (they get unrolled with corresponding permissions).
 
-`(has-role? [role principal])`
+`(has-role? [principal role])`
 
 Returns true if `role` matches any of principal's set of `:roles` 
 
-`(has-permission [permission principal])`
+`(has-permission [principal permission])`
 
 Returns true if `permission` matches any of principal's set of `:permissions`.
 Permission can be exact, eg. `user:write` or wildcard one, like `user:*`.

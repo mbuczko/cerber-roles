@@ -6,39 +6,42 @@ This simple library tries to fill in the gap between OAuth2 authorization and ro
 
 Code has been separated from [Cerber OAuth2 Provider](https://github.com/mbuczko/cerber-oauth2-provider) implementation and published as optional add-on which hopefully makes scopes and roles easier to match.
 
+## Terminology
+
+Terminology used in this doc bases on Apache Shiro: http://shiro.apache.org/terminology.html
+
 ## Anatomy of Permission
 
-A permission model implemented by this library consists of two parts: a _domain_ and _action_, both joined with colon, like `user:read`.
+Permission implemented by this library consists of two parts: a _domain_ and list of comma-separated _actions_, both joined with colon, like `user:read` or `user:read,write`.
 
 This imposes two additional cases:
 
- - wildcard action: any action within given domain is allowed, eg: `user:*`
+ - wildcard action: any action on given domain is allowed, eg: `user:*`, or simply `user`
+ - wildcard domain: given action on any domain is allowed, eg: `*:write`
  - wildcard permission: any action on any domain is allowed: `*:*`, or simply `*`
-
-For sake of clarity, no action on wildcard domain is permitted, so `*:write` is not a valid permission.
 
 ## Anatomy of Role
 
-Similar to permission, role consists of two parts: _domain_ and a _name_, combined together with slash. Roles group multiple permissions in a mapping, like this:
+Role is a named collection of permissions. A name can as simple as `admin` or combined of 2 parts like `user/all`:
 
 ``` clojure
 "user/all"      #{"user:read", "user:write"}
 "project/read"  #{"project:read"}
 ```
 
-Roles may also map to wildcard actions and explicit- or wildcard-roles:
+Roles may also map to wildcard actions and other roles (explicit- or wildcarded ones).
 
 ``` clojure
 "admin/all"     "*"                          ;; maps to wildcard permission
 "project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
-"admin/company" #{"user/*", "project/*"}     ;; maps to all roles from user- and project-domains
+"admin/company" #{"user/*", "project/*"}     ;; maps to other roles from user and project domains
 ```
 
 # Usage
 
 Once permissions and roles are defined and bound together with carefully crafted mapping, how to make them showing up in a request? 
 
-A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` exposed by [Cerber API](https://github.com/mbuczko/cerber-oauth2-provider) and populates authorized principal's roles and permissions.
+A `wrap-permissions` middleware is an answer. It bases on a context set up by companion middleware - `wrap-authorized` exposed by [Cerber API](https://github.com/mbuczko/cerber-oauth2-provider) and populates subject's roles and permissions.
 
 Let's walk through routes configuration based on popular [Compojure](https://github.com/weavejester/compojure) to see how it works.
 
@@ -117,7 +120,7 @@ One unknown is how middleware populates roles and permissions bearing in mind th
 
 1. Request is a cookie-based user-originated one.
    
-   In this scenario, principal initialized and stored in context by cerber's `wrap-authorized` middleware keeps its own roles and permissions calculated upon the roles.
+   In this scenario, subject initialized and stored in context by cerber's `wrap-authorized` middleware keeps its own roles and permissions calculated upon the roles.
 
 2. Request is a token-based client-originated one.
    
@@ -132,14 +135,13 @@ Initializes roles-to-permissions mapping.
 
 Initialized mapping has no longer nested roles (they get unrolled with corresponding permissions).
 
-`(has-role? [principal role])`
+`(has-role? [subject role])`
 
-Returns true if `role` matches any of principal's set of `:roles` 
+Returns true if `role` matches any of subject's set of `:roles` 
 
-`(has-permission [principal permission])`
+`(has-permission [subject permission])`
 
-Returns true if `permission` matches any of principal's set of `:permissions`.
-Permission can be exact, eg. `user:write` or wildcard one, like `user:*`.
+Returns true if `permission` matches any of subject's set of `:permissions`.
 
 ``` clojure
 (def user {:roles #{"user/read" "user/write"}
@@ -147,6 +149,7 @@ Permission can be exact, eg. `user:write` or wildcard one, like `user:*`.
                           (make-permission "contacts:*")}}
 
 (has-permission user "contacts:write"))
+(has-permission user "contacts:read,write"))
 (has-role user "user/write")
 ```
 

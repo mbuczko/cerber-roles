@@ -25,21 +25,21 @@
     (contains-matching-permission? permissions p)))
 
 (defn has-role?
-  "Returns true if principal has given role assigned, returns false otherwise.
+  "Returns true if subject has given role assigned, returns false otherwise.
 
   Role is a slash-separated pair \"domain/name\"."
 
-  [principal role]
-  (let [roles (:roles principal)]
+  [subject role]
+  (let [roles (:roles subject)]
     (and roles (contains? roles role))))
 
 (defn has-permission?
-  "Returns true if principal holds given permission, returns false otherwise.
+  "Returns true if subject holds given permission, returns false otherwise.
 
   Permission is a colon-separated pair \"domain:action\"."
 
-  [principal permission]
-  (let [{:keys [permissions]} principal]
+  [subject permission]
+  (let [{:keys [permissions]} subject]
     (and permission permissions (implied-by? permission permissions))))
 
 #?(:clj (defn init-roles
@@ -61,7 +61,7 @@
             (handler (let [client (:cerber.oauth2.context/client req)]
                        (update req
                                :cerber.oauth2.context/user
-                               update-principals-roles-permissions
+                               update-subject-roles-permissions
                                client
                                roles-mapping
                                scopes->roles))))))

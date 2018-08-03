@@ -5,42 +5,36 @@
   (:require [clojure.set :refer [union intersection]]
             [clojure.string :as str]))
 
-(defrecord Permission [domain action wildcard?])
-
-(defn wildcard-str?
-  [str]
-  (= "*" str))
+(defrecord Permission [domain actions])
 
 (defn role-str?
   [str]
   (and str (.contains str "/")))
 
-(defn sanitize-str
-  "Sanitizes input string trimming white characters on both sides.
-  Revokes empty strings and ones starting with colon character."
-
-  [str]
-  (when-let [sanitized (and str (.trim str))]
-    (when (and (> (.length sanitized) 0)
-               (not (.startsWith sanitized ":")))
-      sanitized)))
+(defn decompose-str
+  [p]
+  (when p
+    (let [arr (.split (.trim p) ":")]
+      (when (or (= -1 (.indexOf p ":"))
+                (=  2 (count arr)))
+        arr))))
 
 (defn make-permission
   "Builds a `Permission` based on colon-separated string, like \"user:write\".
 
   Permission may be exact one, may have wildcard-action or have both domain
-  and action wildcarded. In this case a `wildcard?` is set to true and both
+  and actions wildcarded. In this case a `wildcard?` is set to true and both
   fields contain a wildcard symbol \"*\" as a value."
 
   [p]
-  (let [[domain action] (when p (mapv sanitize-str (.split p ":" 2)))
-        wildcard? (or (wildcard-str? p)
-                      (= action domain "*"))]
-    (when (or wildcard? (and domain action (not (wildcard-str? domain))))
-      (map->Permission
-       {:wildcard? wildcard?
-        :domain (if wildcard? "*" domain)
-        :action (if wildcard? "*" action)}))))
+  (let [[domain a-list] (decompose-str p)
+        wildcard? (or (= p "*")
+                      (= domain a-list "*"))]
+    (when (or wildcard? (seq domain))
+      (let [actions (when (and a-list (not= "*" a-list))
+                      (into #{} (.split a-list ",")))]
+        (->Permission (or domain "*")
+                      (or actions "*"))))))
 
 (defn merge-set
   [coll e]
@@ -76,7 +70,7 @@
 
   [mapping role]
   (let [[d s] (.split role "/")]
-    (if (wildcard-str? s)
+    (if (= "*" s)
       (filter (fn [[k v]] (.startsWith k (str d "/"))) mapping)
       (list [role (get mapping role)]))))
 
@@ -103,26 +97,31 @@
           mapping
           dependencies))
 
+(defn contains-action?
+  [actions a]
+  (or (= "*" actions)
+      (contains? actions a)
+      (seq (intersection actions a))))
+
 (defn contains-exact-permission?
   [permissions p]
   (contains? permissions p))
+
+(defn contains-domain-action?
+  [permissions {:keys [domain actions]}]
+  (some #(and (or (= "*" (:domain %1))
+                  (= domain (:domain %1)))
+              (contains-action? (:actions %1) actions))
+        permissions))
 
 (defn contains-wildcard-permission?
   [permissions]
   (some :wildcard? permissions))
 
-(defn contains-wildcard-action?
-  [permissions p]
-  (let [domain (:domain p)]
-    (some #(and (= "*" (:action %1))
-                (= domain (:domain %1)))
-          permissions)))
-
 (defn contains-matching-permission?
   [permissions p]
   (or (contains-exact-permission? permissions p)
-      (contains-wildcard-action? permissions p)
-      (contains-wildcard-permission? permissions)))
+      (contains-domain-action? permissions p)))
 
 (defn roles->permissions*
   "Unrolls roles into corresponding set of permissions."
@@ -135,31 +134,31 @@
 (def roles->permissions
   (memoize roles->permissions*))
 
-#?(:clj (defn update-principals-roles-permissions
-          "Updates principal's roles and permissions according to following rules:
+#?(:clj (defn update-subject-roles-permissions
+          "Updates subject's roles and permissions according to following rules:
 
   - if a client is given (which assumes client-originated request) roles are calculated
-  based on client's scopes-to-roles transitions map and intersected with principal's own roles.
-  Next, based on resulting roles, permissions are calculated and assigned finally to principal.
+  based on client's scopes-to-roles transitions map and intersected with subject's own roles.
+  Next, based on resulting roles, permissions are calculated and assigned finally to subject.
 
-  - if no client is given (which assumes user-originated request) principal's roles stay
-  untouched. Permissions are being calculated and merged with own principal's ones (if any).
+  - if no client is given (which assumes user-originated request) subject's roles stay
+  untouched. Permissions are being calculated and merged with own subject's ones (if any).
 
   General idea behind these two rules is: when client's scopes are available use them to deduce
-  roles and permissions, otherwise use own principal's roles to calculate final permissions."
+  roles and permissions, otherwise use own subject's roles to calculate final permissions."
 
-          [principal client roles-mapping transitions]
-          (when principal
-            (let [roles (:roles principal)
+          [subject client roles-mapping transitions]
+          (when subject
+            (let [roles (:roles subject)
                   perms (into (roles->permissions roles roles-mapping)
-                              (:permissions principal))]
+                              (:permissions subject))]
 
               (if client
                 (let [client-roles (set (mapcat transitions (:scopes client)))
                       client-perms (roles->permissions client-roles roles-mapping)]
 
-                  (assoc principal
+                  (assoc subject
                          :roles (intersection roles client-roles)
                          :permissions (intersection perms client-perms)))
 
-                (assoc principal :permissions perms))))))
+                (assoc subject :permissions perms))))))

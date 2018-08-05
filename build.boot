@@ -9,7 +9,7 @@
 ;; to check the newest versions:
 ;; boot -d boot-deps ancient
 
-(def +version+ "0.1.1-SNAPSHOT")
+(def +version+ "1.0.0-SNAPSHOT")
 
 (require
  '[adzerk.bootlaces :refer :all]

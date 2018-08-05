@@ -12,10 +12,10 @@
   (and str (.contains str "/")))
 
 (defn decompose-str
-  [p]
-  (when p
-    (let [arr (.split (.trim p) ":")]
-      (when (or (= -1 (.indexOf p ":"))
+  [str]
+  (when str
+    (let [arr (.split (.trim str) ":")]
+      (when (or (= -1 (.indexOf str ":"))
                 (=  2 (count arr)))
         arr))))
 
@@ -26,7 +26,7 @@
   and actions wildcarded. In this case a `wildcard?` is set to true and both
   fields contain a wildcard symbol \"*\" as a value."
 
-  [p]
+  [^String p]
   (let [[domain a-list] (decompose-str p)
         wildcard? (or (= p "*")
                       (= domain a-list "*"))]
@@ -98,13 +98,13 @@
           dependencies))
 
 (defn contains-action?
-  [actions a]
+  [actions ^String a]
   (or (= "*" actions)
       (contains? actions a)
       (seq (intersection actions a))))
 
 (defn contains-exact-permission?
-  [permissions p]
+  [permissions ^Permission p]
   (contains? permissions p))
 
 (defn contains-domain-action?
@@ -119,7 +119,7 @@
   (some :wildcard? permissions))
 
 (defn contains-matching-permission?
-  [permissions p]
+  [permissions ^Permission p]
   (or (contains-exact-permission? permissions p)
       (contains-domain-action? permissions p)))
 
@@ -133,32 +133,3 @@
 
 (def roles->permissions
   (memoize roles->permissions*))
-
-#?(:clj (defn update-subject-roles-permissions
-          "Updates subject's roles and permissions according to following rules:
-
-  - if a client is given (which assumes client-originated request) roles are calculated
-  based on client's scopes-to-roles transitions map and intersected with subject's own roles.
-  Next, based on resulting roles, permissions are calculated and assigned finally to subject.
-
-  - if no client is given (which assumes user-originated request) subject's roles stay
-  untouched. Permissions are being calculated and merged with own subject's ones (if any).
-
-  General idea behind these two rules is: when client's scopes are available use them to deduce
-  roles and permissions, otherwise use own subject's roles to calculate final permissions."
-
-          [subject client roles-mapping transitions]
-          (when subject
-            (let [roles (:roles subject)
-                  perms (into (roles->permissions roles roles-mapping)
-                              (:permissions subject))]
-
-              (if client
-                (let [client-roles (set (mapcat transitions (:scopes client)))
-                      client-perms (roles->permissions client-roles roles-mapping)]
-
-                  (assoc subject
-                         :roles (intersection roles client-roles)
-                         :permissions (intersection perms client-perms)))
-
-                (assoc subject :permissions perms))))))

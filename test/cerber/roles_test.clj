@@ -1,5 +1,5 @@
 (ns cerber.roles-test
-  (:require [cerber.impl.roles :refer [make-permission update-subject-roles-permissions]]
+  (:require [cerber.impl.roles :refer [make-permission]]
             [cerber.roles :refer :all]
             [clojure.test :refer :all]))
 
@@ -143,18 +143,18 @@
                  :permissions #{(make-permission "project:read")}}]
 
     (testing "client provided, scopes map to roles exceeding subject's original roles"
-      (let [updated (update-subject-roles-permissions
+      (let [updated (populate-roles-and-permissions
                      subject {:scopes ["public:read"]} roles {"public:read" #{"unit/read" "manager/read"}})]
         (is (= #{"unit/read"} (:roles updated)))
         (is (= #{(make-permission "user:read")} (:permissions updated)))))
 
     (testing "client provided with empty scopes"
-      (let [updated (update-subject-roles-permissions subject #{} roles scopes->roles)]
+      (let [updated (populate-roles-and-permissions subject #{} roles scopes->roles)]
         (is (= #{} (:roles updated)))
         (is (= #{} (:permissions updated)))))
 
     (testing "client not provided, some permission already assigned to subject"
-      (let [updated (update-subject-roles-permissions subject nil roles scopes->roles)]
+      (let [updated (populate-roles-and-permissions subject nil roles scopes->roles)]
         (is (= #{"unit/read"} (:roles updated)))
         (is (= #{(make-permission "user:read")
                  (make-permission "project:read")} (:permissions updated)))))))

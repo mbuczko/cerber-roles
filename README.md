@@ -33,8 +33,8 @@ Roles may also map to wildcard actions and other roles (explicit- or wildcarded 
 
 ``` clojure
 "admin/all"     "*"                          ;; maps to wildcard permission
-"project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
 "admin/company" #{"user/*", "project/*"}     ;; maps to other roles from user and project domains
+"project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
 ```
 
 # Usage

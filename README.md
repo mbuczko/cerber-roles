@@ -22,7 +22,7 @@ This imposes two additional cases:
 
 ## Anatomy of Role
 
-Role is a named collection of permissions. A name can as simple as `admin` or combined of 2 parts like `user/all`:
+Role is a special named collection of permissions. Name consists of two part combined with slash, eg. `user/default` or `admin/all`:
 
 ``` clojure
 "user/all"      #{"user:read", "user:write"}

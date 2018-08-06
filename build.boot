@@ -2,6 +2,7 @@
  :source-paths #{"src" "test"}
  :dependencies '[[org.clojure/clojure "1.9.0" :scope "provided"]
                  [org.clojure/tools.reader "1.2.1" :scope "test"]
+                 [weavejester/dependency "0.2.1"]
                  [cerber/cerber-oauth2-provider "0.3.1"]
                  [adzerk/bootlaces "0.1.13" :scope "test"]
                  [metosin/bat-test "0.4.0" :scope "test"]])

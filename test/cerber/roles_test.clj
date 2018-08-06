@@ -1,20 +1,22 @@
 (ns cerber.roles-test
-  (:require [cerber.impl.roles :refer [make-permission update-subject-roles-permissions]]
+  (:require [cerber.impl.permissions :refer [make-permission]]
+            [cerber.impl.roles :refer [populate-roles-and-permissions]]
             [cerber.roles :refer :all]
             [clojure.test :refer :all]))
+
 
 ;; a mapping between roles and sets of permissions.
 ;; `init-roles` replaces all the nested roles with flat set of permissions.
 
-(def mapping {"admin"           "*"
-              "user/super"      "user:*"
-              "user/all"        #{"user:read" "user:write"}
+(def mapping {"user/admin"      "*"
+              "user/default"    #{"user:read" "user:write"}
               "unit/read"       #{"user:read"}
               "manager/read"    #{"account:read"}
               "manager/super"   #{"account:read" "account:write" "account:edit" "account:delete"}
               "manager/write"   "unit/*"
               "contact/read"    #{"contact:read"}
-              "department/all"  #{"contact/read" "user/*" "project:read"}
+              "contact/write"   #{"contact:write" "contact:delete"}
+              "department/all"  #{"contact/*" "project:read"}
               "department/edit" "manager/*"})
 
 ;; client's scopes-to-roles mapping used by ring middleware
@@ -105,13 +107,13 @@
       (let [permissions (roles "department/all")]
         (is (implied-by? "project:read" permissions))
         (is (implied-by? "contact:read" permissions))
-        (is (not (implied-by? "contact:write" permissions)))))
+        (is (not (implied-by? "account:read" permissions)))))
 
     (testing "role with nested wildcard role contains permission of the same domain"
       (let [permissions (roles "department/all")]
-        (is (implied-by? "user:read" permissions))
-        (is (implied-by? "user:write" permissions))
-        (is (implied-by? "user:delete" permissions))
+        (is (implied-by? "contact:read" permissions))
+        (is (implied-by? "contact:write" permissions))
+        (is (implied-by? "contact:delete" permissions))
         (is (not (implied-by? "employee:read" permissions)))
         (is (not (implied-by? "account:read" permissions)))))
 
@@ -143,18 +145,18 @@
                  :permissions #{(make-permission "project:read")}}]
 
     (testing "client provided, scopes map to roles exceeding subject's original roles"
-      (let [updated (update-subject-roles-permissions
+      (let [updated (populate-roles-and-permissions
                      subject {:scopes ["public:read"]} roles {"public:read" #{"unit/read" "manager/read"}})]
         (is (= #{"unit/read"} (:roles updated)))
         (is (= #{(make-permission "user:read")} (:permissions updated)))))
 
     (testing "client provided with empty scopes"
-      (let [updated (update-subject-roles-permissions subject #{} roles scopes->roles)]
+      (let [updated (populate-roles-and-permissions subject #{} roles scopes->roles)]
         (is (= #{} (:roles updated)))
         (is (= #{} (:permissions updated)))))
 
     (testing "client not provided, some permission already assigned to subject"
-      (let [updated (update-subject-roles-permissions subject nil roles scopes->roles)]
+      (let [updated (populate-roles-and-permissions subject nil roles scopes->roles)]
         (is (= #{"unit/read"} (:roles updated)))
         (is (= #{(make-permission "user:read")
                  (make-permission "project:read")} (:permissions updated)))))))

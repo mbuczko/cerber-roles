@@ -22,7 +22,7 @@ This imposes two additional cases:
 
 ## Anatomy of Role
 
-Role is a named collection of permissions. A name can as simple as `admin` or combined of 2 parts like `user/all`:
+Role is a special named collection of permissions. Name consists of two part combined with slash, eg. `user/default` or `admin/all`:
 
 ``` clojure
 "user/all"      #{"user:read", "user:write"}
@@ -33,8 +33,8 @@ Roles may also map to wildcard actions and other roles (explicit- or wildcarded 
 
 ``` clojure
 "admin/all"     "*"                          ;; maps to wildcard permission
-"project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
 "admin/company" #{"user/*", "project/*"}     ;; maps to other roles from user and project domains
+"project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
 ```
 
 # Usage

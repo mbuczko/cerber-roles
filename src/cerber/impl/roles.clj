@@ -113,12 +113,24 @@
           perms (into (roles->permissions roles roles-mapping)
                       (:permissions subject))]
 
-      (if (and client transitions)
-        (let [client-roles (set (mapcat transitions (:scopes client)))
-              client-perms (roles->permissions client-roles roles-mapping)]
+      (if client
+        (if transitions
+          (let [client-roles (set (mapcat transitions (:scopes client)))
+                client-perms (roles->permissions client-roles roles-mapping)]
 
+            ;; client's roles and permissions calculated.
+            ;; need to intersect them with user's original privileges.
+            (assoc subject
+                   :roles (set/intersection roles client-roles)
+                   :permissions (set/intersection perms client-perms)))
+
+          ;; no roles-to-scopes transitions provided.
+          ;; clients should have empty roles and permissions in this case
+          ;; as scopes cannot be translated into anything meaningful.
           (assoc subject
-                 :roles (set/intersection roles client-roles)
-                 :permissions (set/intersection perms client-perms)))
+                 :roles (clojure.lang.PersistentHashSet/EMPTY)
+                 :permissions (clojure.lang.PersistentHashSet/EMPTY)))
 
+        ;; not a client's request.
+        ;; assign user his own permissions (calculated upon roles)
         (assoc subject :permissions perms)))))

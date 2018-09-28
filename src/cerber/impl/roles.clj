@@ -113,7 +113,7 @@
           perms (into (roles->permissions roles roles-mapping)
                       (:permissions subject))]
 
-      (if client
+      (if (and client transitions)
         (let [client-roles (set (mapcat transitions (:scopes client)))
               client-perms (roles->permissions client-roles roles-mapping)]
 

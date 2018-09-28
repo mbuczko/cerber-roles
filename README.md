@@ -14,7 +14,7 @@ Terminology used in this doc bases on Apache Shiro: http://shiro.apache.org/term
 
 Permission implemented by this library consists of two parts: a _domain_ and list of comma-separated _actions_, both joined with colon, like `user:read` or `user:read,write`.
 
-This imposes two additional cases:
+This imposes 3 additional cases:
 
  - wildcard action: any action on given domain is allowed, eg: `user:*`, or simply `user`
  - wildcard domain: given action on any domain is allowed, eg: `*:write`
@@ -22,7 +22,7 @@ This imposes two additional cases:
 
 ## Anatomy of Role
 
-Role is a special named collection of permissions. Name consists of two part combined with slash, eg. `user/default` or `admin/all`:
+Role is a special named collection of permissions. Name consists of two parts combined with slash, eg. `user/default` or `admin/all`:
 
 ``` clojure
 "user/all"      #{"user:read", "user:write"}

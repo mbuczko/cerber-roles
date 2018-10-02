@@ -65,7 +65,7 @@
 
 (defn resolve-permissions
   [{:keys [roles dependencies]}]
-  (loop [sorted (dep/topo-sort dependencies), result {}]
+  (loop [sorted (dep/topo-sort dependencies), result roles]
     (if-let [role-name (first sorted)]
       (recur (rest sorted)
              (assoc result role-name (replace-with-permissions

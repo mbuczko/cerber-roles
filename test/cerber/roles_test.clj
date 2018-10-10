@@ -10,6 +10,7 @@
 
 (def mapping {"user/admin"      "*"
               "user/default"    #{"user:read" "user:write"}
+              "user/moderator"  #{"post:delete"}
               "unit/read"       #{"user:read"}
               "manager/read"    #{"account:read"}
               "manager/super"   #{"account:read" "account:write" "account:edit" "account:delete"}
@@ -103,6 +104,9 @@
 
 (deftest unrolled-roles
   (let [roles (init-roles mapping)]
+    (testing "simple role that no other role depends on"
+      (is (implied-by? "post:delete" (roles "user/moderator"))))
+
     (testing "role with nested roles contains exact permission"
       (let [permissions (roles "department/all")]
         (is (implied-by? "project:read" permissions))

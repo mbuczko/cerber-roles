@@ -65,13 +65,15 @@
 
 (defn resolve-permissions
   [{:keys [roles dependencies]}]
-  (loop [sorted (dep/topo-sort dependencies), result roles]
-    (if-let [role-name (first sorted)]
-      (recur (rest sorted)
-             (assoc result role-name (replace-with-permissions
-                                      (roles role-name)
-                                      result)))
-      result)))
+  (let [deps (dep/topo-sort dependencies)              ;; roles that other roles depend on, sorted topologically
+        diff (set/difference (set (keys roles)) deps)] ;; roles that no other roles depend on, thus not listed in dependencies
+    (loop [sorted (concat deps diff), result {}]
+      (if-let [role-name (first sorted)]
+        (recur (rest sorted)
+               (assoc result role-name (replace-with-permissions
+                                        (roles role-name)
+                                        result)))
+        result))))
 
 (defn unroll-roles
   "Walks through role-to-permissions mappings unrolling every nested

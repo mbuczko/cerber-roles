@@ -100,14 +100,14 @@
   "Updates subject's roles and permissions according to following rules:
 
   - if a client is given (which assumes client-originated request) roles are calculated
-  based on client's scopes-to-roles transitions map and intersected with subject's own roles.
+  based on client's scopes-to-roles transitions map intersected with subject's own roles.
   Next, based on resulting roles, permissions are calculated and assigned finally to subject.
 
   - if no client is given (which assumes user-originated request) subject's roles stay
   untouched. Permissions are being calculated and merged with own subject's ones (if any).
 
   General idea behind these two rules is: when client's scopes are available use them to deduce
-  roles and permissions, otherwise use own subject's roles to calculate final permissions."
+  roles and permissions, otherwise use subject's own roles to calculate final permissions."
 
   [subject client roles-mapping transitions]
   (when subject

@@ -14,6 +14,7 @@
   "Returns true if subject has given role assigned, returns false otherwise."
 
   [subject role]
+  {:pre [(set? (:roles subject))]}
   (let [roles (:roles subject)]
     (and roles (contains? roles role))))
 

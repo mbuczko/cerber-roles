@@ -130,6 +130,10 @@
       (is (implied-by? "user:read" (roles "department/edit"))))))
 
 (deftest subject-permissions
+  (testing "subject roles as a set"
+    (let [subject (:roles ["user/read" "user/write"])]
+      (is (thrown? AssertionError (has-role? subject "user/read")))))
+
   (testing "subject with a roles"
     (let [subject {:roles #{"user/read" "user/write"}}]
       (is (has-role? subject "user/read"))

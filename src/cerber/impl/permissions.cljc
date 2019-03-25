@@ -5,17 +5,17 @@
 
 (defn decompose-str
   [str]
-  (when (and str (= -1 (.indexOf str "/")))
-    (let [arr (.split (.trim str) ":")]
-      (when (or (= -1 (.indexOf str ":"))
-                (=  2 (count arr)))
-        arr))))
+  (when-let [arr (and (string? str)
+                      (.split (.trim str) ":"))]
+    (when (or (= -1 (.indexOf str ":"))
+              (=  2 (count arr)))
+      arr)))
 
 (defn make-permission
   "Builds a `Permission` based on colon-separated string, like \"user:write\".
 
   Permission may be exact one, may have wildcard-action or have both domain
-  and actions wildcarded. In this case a `wildcard?` is set to true and both
+  and actions wildcarded. In this case a `:wildcard?` is set to true and both
   fields contain a wildcard symbol \"*\" as a value."
 
   [^String p]

@@ -22,19 +22,20 @@ This imposes 3 additional cases:
 
 ## Anatomy of Role
 
-Role is a special named collection of permissions. Name consists of two parts combined with slash, eg. `user/default` or `admin/all`:
+Role is a collection of permissions. Technically, it is represented by a qualified keyword, eg. `:user/default` or `:admin/all`:
 
 ``` clojure
-"user/all"      #{"user:read", "user:write"}
-"project/read"  #{"project:read"}
+{:user/all      #{"user:read" "user:write"}
+ :project/read  #{"project:read"}}
 ```
 
 Roles may also map to wildcard actions and other roles (explicit- or wildcarded ones).
 
 ``` clojure
-"admin/all"     "*"                          ;; maps to wildcard permission
-"admin/company" #{"user/*", "project/*"}     ;; maps to other roles from user and project domains
-"project/all"   #{"project:*", "timeline:*"} ;; maps to wildcard-action permissions
+{:admin/all     "*"                          ;; maps to wildcard permission
+ :admin/company #{:user/* :project/*}        ;; maps to other roles from user and project domains
+ :project/all   #{"project:*" "timeline:*"}} ;; maps to wildcard-action permissions
+
 ```
 
 # Usage
@@ -93,17 +94,17 @@ Last step is to initialize routes with _roles_ and _scopes-to-roles_ mapping, he
 ```clojure
 (def roles (cerber.roles/init-roles
              {;; admin can do everything with photos and comments
-              "user/admin"   #{"photos:*" "comments:*"}
+              :user/admin #{"photos:*" "comments:*"}
               
-              ;; user can read and write to photos and comments
-              "user/all"     #{"photos:read" "photos:write" "comments:read" "comments:write"}
+              ;; registered user can read and write to photos and comments
+              :user/all #{"photos:read" "photos:write" "comments:read" "comments:write"}
               
-              ;; limited user can only read photos and comments
-              "user/limited" #{"photos:read" "comments:read"}}))
+              ;; unregistered user can only read photos and comments
+              :user/unregistered #{"photos:read" "comments:read"}}))
 
-(def scopes->roles {"resources:read"   #{"user/limited"}
-                    "resources:write"  #{"users/all"}
-                    "resources:manage" #{"user/admin"}})
+(def scopes->roles {"resources:read"   #{:user/unregistered}
+                    "resources:write"  #{:users/all}
+                    "resources:manage" #{:user/admin}})
 
 (def app-routes
   (routes (api-routes roles scopes->roles) oauth2-routes))
@@ -144,13 +145,13 @@ Returns true if `role` matches any of subject's set of `:roles`
 Returns true if `permission` matches any of subject's set of `:permissions`.
 
 ``` clojure
-(def user {:roles #{"user/read" "user/write"}
+(def user {:roles #{:user/read :user/write}
            :permissions #{(make-permission "project:read")
                           (make-permission "contacts:*")}}
 
 (has-permission user "contacts:write"))
 (has-permission user "contacts:read,write"))
-(has-role user "user/write")
+(has-role user :user/write)
 ```
 
 

@@ -1,32 +1,24 @@
 (ns cerber.impl.roles
   (:require [cerber.impl.permissions :refer [make-permission]]
             [weavejester.dependency :as dep]
-            [clojure.set :as set]
-            [clojure.string :as str]))
+            [clojure.set :as set]))
 
-(defn role-str?
-  [str]
-  (and str (.contains str "/")))
-
-(defn roles-by-domain
-  [domain roles-names]
-  (let [d (str domain "/")]
-    (filter #(.startsWith % d) roles-names)))
+(def decompose-role-key
+  (juxt namespace name))
 
 (defn replace-wildcard-roles
   [roles-or-permissions roles-names]
   (loop [rops roles-or-permissions, result #{}]
     (if-let [role-or-perm (first rops)]
       (recur (rest rops)
-             (if-not (role-str? role-or-perm)
+             (if (string? role-or-perm)
                ;; permission
                (conj result role-or-perm)
 
                ;; role
-               (let [[domain role] (.split role-or-perm "/")]
-                 (assert (and domain role (not= "" domain)))
+               (let [[domain role] (decompose-role-key role-or-perm)]
                  (if (= "*" role)
-                   (into result (roles-by-domain domain roles-names))
+                   (into result (filter #(= domain (namespace %)) roles-names))
                    (conj result role-or-perm)))))
       result)))
 
@@ -35,21 +27,22 @@
   (when-let [roles-names (keys roles)]
     (reduce-kv (fn [m k v]
                  (assoc m k (replace-wildcard-roles
-                             (if (string? v) (hash-set v) v)
+                             (if (set? v) v (hash-set v))
                              roles-names)))
                {}
                roles)))
 
-(defn add-dependencies
+(defn add-dependency
   [graph role-name roles]
   (reduce #(dep/depend %1 role-name %2) graph roles))
 
 (defn build-dependency-graph
   [roles-kv]
-  (loop [graph (dep/graph), roles roles-kv]
+  (loop [graph (dep/graph)
+         roles roles-kv]
     (if-let [[role-name roles-or-permissions] (first roles)]
       (recur
-       (add-dependencies graph role-name (filter role-str? roles-or-permissions))
+       (add-dependency graph role-name (filter keyword? roles-or-permissions))
        (rest roles))
       {:roles roles-kv
        :dependencies graph})))
@@ -57,17 +50,25 @@
 (defn replace-with-permissions
   [roles-or-permissions roles-kv]
   (reduce (fn [result rop]
-            (if (role-str? rop)
-              (into result (roles-kv rop))
-              (conj result (make-permission rop))))
+            (if (string? rop)
+              (conj result (make-permission rop))
+              (into result (roles-kv rop))))
           #{}
           roles-or-permissions))
 
 (defn resolve-permissions
   [{:keys [roles dependencies]}]
-  (let [deps (dep/topo-sort dependencies)              ;; roles that other roles depend on, sorted topologically
-        diff (set/difference (set (keys roles)) deps)] ;; roles that no other roles depend on, thus not listed in dependencies
-    (loop [sorted (concat deps diff), result {}]
+  (let [;; roles that other roles depend on, sorted topologically
+        deps (dep/topo-sort dependencies)
+
+        ;; roles that do not depend on any other roles and no other
+        ;; roles depend on them. independent roles are not listed
+        ;; in `deps` so they are calculated here and concatenated
+        ;; with dependencies afterwards.
+        diff (set/difference (set (keys roles)) deps)]
+
+    (loop [sorted (concat deps diff)
+           result {}]
       (if-let [role-name (first sorted)]
         (recur (rest sorted)
                (assoc result role-name (replace-with-permissions
@@ -76,11 +77,11 @@
         result))))
 
 (defn unroll-roles
-  "Walks through role-to-permissions mappings unrolling every nested
+  "Walks through `roles-mapping` unrolling every nested
   role with flat set of permissions."
 
-  [roles]
-  (-> roles
+  [roles-mapping]
+  (-> roles-mapping
       (unwind-wildcard-roles)
       (build-dependency-graph)
       (resolve-permissions)))

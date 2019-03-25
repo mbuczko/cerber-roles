@@ -2,8 +2,7 @@
   "An API with all the functions for roles- and permissions creation and assertion."
 
   (:require [cerber.impl.permissions :as p]
-            #?(:clj [cerber.impl.roles :as r])
-            #?(:clj [cerber.oauth2.context])))
+            #?(:clj [cerber.impl.roles :as r])))
 
 
 (defn implied-by? [permission permissions]

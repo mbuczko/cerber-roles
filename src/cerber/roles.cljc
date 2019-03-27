@@ -14,15 +14,14 @@
 
   [subject role]
   {:pre [(set? (:roles subject))]}
-  (let [roles (:roles subject)]
-    (and roles (contains? roles role))))
+  (contains? (:roles subject) role))
 
 (defn has-permission?
   "Returns true if subject holds given permission, returns false otherwise."
 
   [subject permission]
-  (let [{:keys [permissions]} subject]
-    (and permission permissions (implied-by? permission permissions))))
+  {:pre [(set? (:permissions subject))]}
+  (implied-by? permission (:permissions subject)))
 
 #?(:clj (defn init-roles
           "Returns a mapping between roles and set of permissions. Nested roles,

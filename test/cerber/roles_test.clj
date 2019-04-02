@@ -20,6 +20,9 @@
               :department/all  #{:contact/* "project:read"}
               :department/edit :manager/*})
 
+(def circular {:user/admin :manager/super
+               :manager/super :user/admin})
+
 ;; client's scopes-to-roles mapping used by ring middleware
 
 (def scopes->roles {"public:read" #{"unit/read" "manager/read"}})
@@ -127,7 +130,12 @@
         (is (not (implied-by? "contact:read" permissions)))))
 
     (testing "double nested roles"
-      (is (implied-by? "user:read" (roles :department/edit))))))
+      (is (implied-by? "user:read" (roles :department/edit))))
+
+    (testing "circular dependencies"
+      (is (thrown-with-msg? Exception
+                            #"Circular dependency between :manager/super and :user/admin"
+                            (init-roles circular))))))
 
 (deftest subject-permissions
   (testing "subject roles as a set"

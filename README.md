@@ -154,4 +154,6 @@ Returns true if `permission` matches any of subject's set of `:permissions`.
 (has-role user :user/write)
 ```
 
+# License
 
+Eclipse Public License - v 2.0

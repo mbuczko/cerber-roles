@@ -45,9 +45,9 @@
   (->> src
        (map #(some (fn [p]
                      (when (or (matches? % p)
-                               (or (wildcard-domain? p)
-                                   (wildcard-domain? %)
-                                   (= (:domain %) (:domain p))))
+                               (wildcard-domain? p)
+                               (wildcard-domain? %)
+                               (= (:domain %) (:domain p)))
                        (-> p
                            (cond-> (wildcard-domain? p)
                              (assoc :domain (:domain %)))

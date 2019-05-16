@@ -215,8 +215,8 @@
 
     (testing "client provided with empty scopes"
       (let [updated (populate-roles-and-permissions subject #{} roles scopes->roles)]
-        (is (= #{} (:roles updated)))
-        (is (= #{} (:permissions updated)))))
+        (is (empty? (:roles updated)))
+        (is (empty? (:permissions updated)))))
 
     (testing "client not provided, some permission already assigned to subject"
       (let [updated (populate-roles-and-permissions subject nil roles scopes->roles)]

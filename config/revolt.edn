@@ -5,8 +5,7 @@
  :revolt.task/clean {:extra-paths ["dist"]}
  :revolt.task/jar   {:exclude-paths ["config" "test"]}
  :revolt.task/codox {:source-paths ["src/clj"]
-                      :source-uri "http://github.com/mbuczko/cerber-roles/blob/{version}/{filepath}#L{line}"
-                      :namespaces [edge.http
-                                   edge.middleware]}
+                     :source-uri "http://github.com/mbuczko/cerber-roles/blob/{version}/{filepath}#L{line}"}
+
  :revolt.plugin/nrepl {:port 5600}
  :revolt.plugin/watch {:on-change {:revolt.task/test "glob:**/*.clj"}}}

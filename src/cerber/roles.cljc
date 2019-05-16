@@ -40,12 +40,12 @@
   [^String str]
   (p/build str))
 
-(defn roles->permissions
-  "Returns set of permissions based on collection of `roles` and `mapping`
+#?(:clj (defn roles->permissions
+      "Returns set of permissions based on collection of `roles` and `mapping`
   returned by `init-roles` function."
 
-  [roles mapping]
-  (r/roles->permissions roles mapping))
+      [roles mapping]
+      (r/roles->permissions roles mapping)))
 
 #?(:clj (defn intersect-permissions
          "Intersects 2 sets of permissions calculating their common domains and actions.

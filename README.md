@@ -161,7 +161,7 @@ Returns falsey otherwise.
 `(intersect-permissions [coll1 coll2])`
 
 Intersects 2 sets of permissions calculating their common domains and actions.
-For example, intersection of following permissions: `[\"*:read,write\"]` and `[\"doc:read,create\"]` results in `[\"doc:read\"]`.
+For example, intersection of following permissions: `["*:read,write"]` and `["doc:read,create"]` results in `["doc:read"]`.
 
 `(roles->permissions [roles mapping])`
 

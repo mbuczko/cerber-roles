@@ -188,6 +188,16 @@ Returns set of permissions based on collection of `roles` and `mapping` returned
                                     [(make-permission "document:read,write")]))
 ```
 
+# Set up for local development
+
+This library uses clojure [deps](https://clojure.org/guides/deps_and_cli) and [revolt](https://github.com/mbuczko/revolt) to set up comfortable local environment:
+
+```clojure
+    clj -A:dev -p nrepl,watch,rebel
+```
+
+...and connect to the REPL.
+
 # License
 
 Eclipse Public License - v 2.0

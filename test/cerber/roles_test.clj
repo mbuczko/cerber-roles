@@ -1,7 +1,6 @@
 (ns cerber.roles-test
-  (:require [cerber.impl.permissions :refer [make-permission]]
-            [cerber.impl.roles :refer [populate-roles-and-permissions]]
-            [cerber.roles :refer :all]
+  (:require [cerber.impl.roles :refer [populate-roles-and-permissions]]
+            [cerber.roles :refer [init-roles make-permission intersect-permissions implied-by? has-role? has-permission?]]
             [clojure.test :refer [deftest testing is]]))
 
 
@@ -97,7 +96,7 @@
     (let [permissions #{(make-permission "*:read,write")}]
       (is (implied-by? "contact:write" permissions))
       (is (implied-by? "user:write" permissions))
-      (is (implied-by? "user:delete,write" permissions))
+      (is (not (implied-by? "user:delete,write" permissions)))
       (is (not (implied-by? "contact:delete" permissions)))))
 
   (testing "wildcard permission"
@@ -136,6 +135,52 @@
       (is (thrown-with-msg? Exception
                             #"Circular dependency between :manager/super and :user/admin"
                             (init-roles circular))))))
+
+(deftest permissions-intersection
+  (letfn [(has? [coll p]
+            (contains? coll (make-permission p)))
+          (intersect [p1 p2]
+            (intersect-permissions [(make-permission p1)]
+                                   [(make-permission p2)]))]
+    (testing "exact domain, exact actions"
+      (is (has?   (intersect "doc:read,write" "doc:read")        "doc:read"))
+      (is (has?   (intersect "doc:read,write" "doc:read,create") "doc:read"))
+      (is (empty? (intersect "doc:read,write" "doc:create")))
+      (is (empty? (intersect "doc:read,write" "ws:read"))))
+
+    (testing "exact domain, wildcard actions"
+      (is (has?   (intersect "doc:read,write" "doc:*")  "doc:read,write"))
+      (is (empty? (intersect "doc:read,write" "ws:*")))
+      (is (has?   (intersect "doc:*" "doc:read,write")  "doc:read,write"))
+      (is (empty? (intersect "doc:*" "ws:read,write"))))
+
+    (testing "wildcard domain, exact actions"
+      (is (has?   (intersect "*:read,write" "ws:read")         "ws:read"))
+      (is (empty? (intersect "*:read,write" "ws:create")))
+      (is (has?   (intersect "*:read,write" "ws:read,create")  "ws:read"))
+      (is (empty? (intersect "*:read,write" "*:create")))
+      (is (empty? (intersect "doc:read,write" "*:create")))
+      (is (has?   (intersect "doc:read,write" "*:read,create") "doc:read")))
+
+    (testing "wildcard domain, wildcard actions"
+      (is (has?   (intersect "doc:*" "*:read,write") "doc:read,write"))
+      (is (has?   (intersect "doc:*" "*:*")          "doc:*"))
+      (is (has?   (intersect "doc:read,write" "*:*") "doc:read,write"))
+      (is (has?   (intersect "*:read,write" "*:*")   "*:read,write"))
+      (is (has?   (intersect "*:*" "doc:read,write") "doc:read,write"))
+      (is (has?   (intersect "*:*" "doc:*")          "doc:*"))
+      (is (has?   (intersect "*:*" "*:write")        "*:write"))
+      (is (has?   (intersect "*:*" "*:*")            "*:*")))
+
+    (testing "intersection of multiple permissions"
+      (let [result (intersect-permissions [(make-permission "document:read,write")
+                                           (make-permission "workspace:create")
+                                           (make-permission "document:delete,create")]
+                                          [(make-permission "*:create,delete")])]
+
+        (is (implied-by? "document:create" result))
+        (is (implied-by? "document:delete" result))
+        (is (implied-by? "workspace:create" result))))))
 
 (deftest subject-permissions
   (testing "subject roles as a set"

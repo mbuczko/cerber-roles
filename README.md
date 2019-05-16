@@ -136,23 +136,67 @@ Initializes roles-to-permissions mapping.
 
 Initialized mapping has no longer nested roles (they get unrolled with corresponding permissions).
 
+`(make-permission str)`
+
+Builds a `Permission` based on string consisting of domain and actions, separated by colon, like "user:read,write".
+Permission may be exact one, have actions or domain (or both) wildcarded.
+
+Wildcard is denoted by "\*", and means _any_, so "document:*" permission can be read as _any action on document_.
+
+`(implied-by? [permission permissions])`
+
+Returns resource `permission` if it's implied (has access to) by the set of `permissions`.
+Returns falsey otherwise.
+
 `(has-role? [subject role])`
 
-Returns true if `role` matches any of subject's set of `:roles` 
+Returns matching `role` if it's been found in `subject's` set of `:roles`.
+Returns falsey otherwise.
 
 `(has-permission [subject permission])`
 
-Returns true if `permission` matches any of subject's set of `:permissions`.
+Returns resource permission if it's implied by `subject`'s set of `:permissions`.
+Returns falsey otherwise.
+
+`(intersect-permissions [coll1 coll2])`
+
+Intersects 2 sets of permissions calculating their common domains and actions.
+For example, intersection of following permissions:
+
+     [\"*:read,write\"] and [\"doc:read,create\"]
+
+  results in [\"doc:read\"].
+
+`(roles->permissions [roles mapping])`
+
+Returns set of permissions based on collection of `roles` and `mapping` returned by `init-roles` function.
 
 ``` clojure
-(def user {:roles #{:user/read :user/write}
-           :permissions #{(make-permission "project:read")
-                          (make-permission "contacts:*")}}
+(def subject {:roles #{:user/read :user/write}
+              :permissions #{(make-permission "project:read")
+                             (make-permission "contacts:*")}}
 
-(has-permission user "contacts:write"))
-(has-permission user "contacts:read,write"))
+(has-permission subject "contacts:write"))
+(has-permission subject "contacts:read,write"))
+
 (has-role user :user/write)
+
+(implied-by? "document:read" 
+             (intersect-permissions [(make-permission "document:read,write")
+                                     (make-permission "workspace:create")
+                                     (make-permission "document:delete,create")]
+                                    [(make-permission "document:read,write")]))
 ```
+
+# Set up for local development
+
+This library uses clojure [deps](https://clojure.org/guides/deps_and_cli) and [revolt](https://github.com/mbuczko/revolt) to set up comfortable local environment:
+
+```clojure
+    clj -A:dev -p nrepl,watch,rebel
+```
+
+...and connect to the REPL.
 
 # License
 

@@ -1,5 +1,5 @@
 (ns cerber.impl.roles
-  (:require [cerber.impl.permissions :refer [make-permission]]
+  (:require [cerber.impl.permissions :as perm]
             [weavejester.dependency :as dep]
             [clojure.set :as set]))
 
@@ -51,7 +51,7 @@
   [roles-or-permissions roles-kv]
   (reduce (fn [result rop]
             (if (string? rop)
-              (conj result (make-permission rop))
+              (conj result (perm/build rop))
               (into result (roles-kv rop))))
           #{}
           roles-or-permissions))
@@ -86,16 +86,20 @@
       (build-dependency-graph)
       (resolve-permissions)))
 
-(defn roles->permissions*
+(defn roles->permissions
+  [roles mapping]
+  (->> roles
+       (reduce #(if-let [perms (get mapping %2)]
+              (perm/group-by-domain %1 perms)
+              %1)
+           {})
+       (vals)
+       (set)))
+
+(def roles->permissions*
   "Unrolls roles into corresponding set of permissions."
 
-  [roles roles-mapping]
-  (reduce (fn [coll role] (into coll (get roles-mapping role)))
-          #{}
-          roles))
-
-(def roles->permissions
-  (memoize roles->permissions*))
+  (memoize roles->permissions))
 
 (defn populate-roles-and-permissions
   "Updates subject's roles and permissions according to following rules:
@@ -113,19 +117,19 @@
   [subject client roles-mapping transitions]
   (when subject
     (let [roles (:roles subject)
-          perms (into (roles->permissions roles roles-mapping)
+          perms (into (roles->permissions* roles roles-mapping)
                       (:permissions subject))]
 
       (if client
         (if transitions
           (let [client-roles (set (mapcat transitions (:scopes client)))
-                client-perms (roles->permissions client-roles roles-mapping)]
+                client-perms (roles->permissions* client-roles roles-mapping)]
 
             ;; client's roles and permissions calculated.
             ;; need to intersect them with user's original privileges.
             (assoc subject
                    :roles (set/intersection roles client-roles)
-                   :permissions (set/intersection perms client-perms)))
+                   :permissions (perm/intersect perms client-perms)))
 
           ;; no roles-to-scopes transitions provided.
           ;; clients should have empty roles and permissions in this case

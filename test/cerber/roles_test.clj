@@ -1,7 +1,7 @@
 (ns cerber.roles-test
-  (:require [cerber.impl.permissions :refer [make-permission]]
-            [cerber.impl.roles :refer [populate-roles-and-permissions]]
-            [cerber.roles :refer :all]
+  (:require [cerber.impl.roles :refer [populate-roles-and-permissions]]
+            [cerber.impl.permissions :refer [wildcard-action? wildcard-domain?]]
+            [cerber.roles :refer [init-roles make-permission intersect-permissions implied-by? has-role? has-permission?]]
             [clojure.test :refer [deftest testing is]]))
 
 
@@ -42,27 +42,27 @@
   (testing "wildcard action"
     (let [permission (make-permission "user")]
       (is (= "user" (:domain permission)))
-      (is (= "*" (:actions permission)))))
+      (is (wildcard-action? permission))))
 
   (testing "wildcard domain"
     (let [permission (make-permission "*:write")]
-      (is (= "*" (:domain permission)))
+      (is (wildcard-domain? permission))
       (is (contains? (:actions permission) "write"))))
 
   (testing "explicitly wildcarded action"
     (let [permission (make-permission "user:*")]
       (is (= "user" (:domain permission)))
-      (is (= "*" (:actions permission)))))
+      (is (wildcard-action? permission))))
 
   (testing "wildcard permission"
     (let [permission (make-permission "*")]
-      (is (= "*" (:domain permission)))
-      (is (= "*" (:actions permission)))))
+      (is (wildcard-domain? permission))
+      (is (wildcard-action? permission))))
 
   (testing "explicitly wildcarded permission"
     (let [permission (make-permission "*:*")]
-      (is (= "*" (:domain permission)))
-      (is (= "*" (:actions permission)))))
+      (is (wildcard-domain? permission))
+      (is (wildcard-action? permission))))
 
   (testing "invalid permissions"
     (is (nil? (make-permission nil)))
@@ -74,7 +74,7 @@
     (is (nil? (make-permission ":read")))
     (is (nil? (make-permission "  :write")))))
 
-(deftest checking-permissions
+(deftest permissions-matching
   (testing "exact permission"
     (let [permissions #{(make-permission "contact:read")}]
       (is (implied-by? "contact:read" permissions))
@@ -97,7 +97,7 @@
     (let [permissions #{(make-permission "*:read,write")}]
       (is (implied-by? "contact:write" permissions))
       (is (implied-by? "user:write" permissions))
-      (is (implied-by? "user:delete,write" permissions))
+      (is (not (implied-by? "user:delete,write" permissions)))
       (is (not (implied-by? "contact:delete" permissions)))))
 
   (testing "wildcard permission"
@@ -105,7 +105,54 @@
       (is (implied-by? "user:delete" permissions))
       (is (implied-by? "contact:write" permissions)))))
 
-(deftest unrolled-roles
+(deftest permissions-intersections
+  (letfn [(has? [coll p]
+            (contains? coll (make-permission p)))
+          (intersect [p1 p2]
+            (intersect-permissions [(make-permission p1)]
+                                   [(make-permission p2)]))]
+
+    (testing "exact domain, exact actions"
+      (is (has?   (intersect "doc:read,write" "doc:read")        "doc:read"))
+      (is (has?   (intersect "doc:read,write" "doc:read,create") "doc:read"))
+      (is (empty? (intersect "doc:read,write" "doc:create")))
+      (is (empty? (intersect "doc:read,write" "ws:read"))))
+
+    (testing "exact domain, wildcard actions"
+      (is (has?   (intersect "doc:read,write" "doc:*")  "doc:read,write"))
+      (is (empty? (intersect "doc:read,write" "ws:*")))
+      (is (has?   (intersect "doc:*" "doc:read,write")  "doc:read,write"))
+      (is (empty? (intersect "doc:*" "ws:read,write"))))
+
+    (testing "wildcard domain, exact actions"
+      (is (has?   (intersect "*:read,write" "ws:read")         "ws:read"))
+      (is (empty? (intersect "*:read,write" "ws:create")))
+      (is (has?   (intersect "*:read,write" "ws:read,create")  "ws:read"))
+      (is (empty? (intersect "*:read,write" "*:create")))
+      (is (empty? (intersect "doc:read,write" "*:create")))
+      (is (has?   (intersect "doc:read,write" "*:read,create") "doc:read")))
+
+    (testing "wildcard domain, wildcard actions"
+      (is (has?   (intersect "doc:*" "*:read,write") "doc:read,write"))
+      (is (has?   (intersect "doc:*" "*:*")          "doc:*"))
+      (is (has?   (intersect "doc:read,write" "*:*") "doc:read,write"))
+      (is (has?   (intersect "*:read,write" "*:*")   "*:read,write"))
+      (is (has?   (intersect "*:*" "doc:read,write") "doc:read,write"))
+      (is (has?   (intersect "*:*" "doc:*")          "doc:*"))
+      (is (has?   (intersect "*:*" "*:write")        "*:write"))
+      (is (has?   (intersect "*:*" "*:*")            "*:*")))
+
+    (testing "intersection of multiple permissions"
+      (let [result (intersect-permissions [(make-permission "document:read,write")
+                                           (make-permission "workspace:create")
+                                           (make-permission "document:delete,create")]
+                                          [(make-permission "*:create,delete")])]
+
+        (is (implied-by? "document:create" result))
+        (is (implied-by? "document:delete" result))
+        (is (implied-by? "workspace:create" result))))))
+
+(deftest roles-unrolling
   (let [roles (init-roles mapping)]
     (testing "simple role that no other role depends on"
       (is (implied-by? "post:delete" (roles :user/moderator))))
@@ -137,17 +184,17 @@
                             #"Circular dependency between :manager/super and :user/admin"
                             (init-roles circular))))))
 
-(deftest subject-permissions
-  (testing "subject roles as a set"
+(deftest subject-with-roles-and-permissions
+  (testing "roles are stored in set"
     (let [subject (:roles [:user/read :user/write])]
       (is (thrown? AssertionError (has-role? subject :user/read)))))
 
-  (testing "subject with a roles"
+  (testing "subject has matching roles"
     (let [subject {:roles #{:user/read :user/write}}]
       (is (has-role? subject :user/read))
       (is (not (has-role? subject :user/edit)))))
 
-  (testing "subject with a permissions"
+  (testing "subject has matching permissions"
     (let [subject {:permissions #{(make-permission "project:read")
                                   (make-permission "contact:*")}}]
       (is (has-permission? subject "project:read"))
@@ -168,8 +215,8 @@
 
     (testing "client provided with empty scopes"
       (let [updated (populate-roles-and-permissions subject #{} roles scopes->roles)]
-        (is (= #{} (:roles updated)))
-        (is (= #{} (:permissions updated)))))
+        (is (empty? (:roles updated)))
+        (is (empty? (:permissions updated)))))
 
     (testing "client not provided, some permission already assigned to subject"
       (let [updated (populate-roles-and-permissions subject nil roles scopes->roles)]

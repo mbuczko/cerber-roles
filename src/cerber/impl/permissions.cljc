@@ -1,7 +1,25 @@
 (ns cerber.impl.permissions
   (:require [clojure.set :as set]))
 
-(defrecord Permission [domain actions])
+(defprotocol Wildcarded
+  (wildcard-action? [this] "Returns true if action of permission is wildcarded")
+  (wildcard-domain? [this] "Returns true if domain of permission is wildcarded")
+  (matches? [this perm]    "Returns true if domain and actions match corresponding domain and actions of `perm`"))
+
+(defrecord Permission [domain actions]
+  Wildcarded
+  (wildcard-action? [this]
+    (= "*" actions))
+
+  (wildcard-domain? [this]
+    (= "*" domain))
+
+  (matches? [this perm]
+    (and (seq (:actions perm))
+         (or (wildcard-domain? this)
+             (= (:domain perm) domain))
+         (or (wildcard-action? this)
+             (every? actions (:actions perm))))))
 
 (defn decompose-str
   [str]
@@ -11,13 +29,7 @@
               (=  2 (count arr)))
       arr)))
 
-(defn make-permission
-  "Builds a `Permission` based on colon-separated string, like \"user:write\".
-
-  Permission may be exact one, may have wildcard-action or have both domain
-  and actions wildcarded. In this case a `:wildcard?` is set to true and both
-  fields contain a wildcard symbol \"*\" as a value."
-
+(defn build
   [^String p]
   (let [[domain a-list] (decompose-str p)
         wildcard? (or (= p "*")
@@ -28,28 +40,36 @@
         (->Permission (or domain "*")
                       (or actions "*"))))))
 
-(defn contains-action?
-  [actions ^String a]
-  (or (= "*" actions)
-      (contains? actions a)
-      (seq (set/intersection actions a))))
+(defn intersect
+  [src dest]
+  (->> src
+       (map #(some (fn [p]
+                     (when (or (matches? % p)
+                               (wildcard-domain? p)
+                               (wildcard-domain? %)
+                               (= (:domain %) (:domain p)))
+                       (-> p
+                           (cond-> (wildcard-domain? p)
+                             (assoc :domain (:domain %)))
+                           (cond-> (wildcard-action? p)
+                             (assoc :actions (:actions %)))
+                           (cond-> (and (not (wildcard-action? p))
+                                        (not (wildcard-action? %)))
+                             (assoc :actions (set/intersection
+                                              (:actions %)
+                                              (:actions p)))))))
+                   dest))
+       (filter #(seq (:actions %)))
+       (set)))
 
-(defn contains-exact-permission?
-  [permissions ^Permission p]
-  (contains? permissions p))
-
-(defn contains-domain-action?
-  [permissions {:keys [domain actions]}]
-  (some #(and (or (= "*" (:domain %1))
-                  (= domain (:domain %1)))
-              (contains-action? (:actions %1) actions))
-        permissions))
-
-(defn contains-wildcard-permission?
-  [permissions]
-  (some :wildcard? permissions))
+(defn group-by-domain
+  [m permissions]
+  (loop [perms permissions, result m]
+    (if-let [{:keys [domain actions] :as permission} (first perms)]
+      (recur (rest perms)
+             (update result domain #(if % (update % :actions into actions) permission)))
+      result)))
 
 (defn contains-matching-permission?
   [permissions ^Permission p]
-  (or (contains-exact-permission? permissions p)
-      (contains-domain-action? permissions p)))
+  (some #(when (matches? % p) %) permissions))

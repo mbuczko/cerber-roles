@@ -177,7 +177,7 @@ Returns set of permissions based on collection of `roles` and `mapping` returned
 (has-permission subject "contacts:write"))
 (has-permission subject "contacts:read,write"))
 
-(has-role user :user/write)
+(has-role? subject :user/write)
 
 (implied-by? "document:read" 
              (intersect-permissions [(make-permission "document:read,write")
